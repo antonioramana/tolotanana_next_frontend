@@ -414,16 +414,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                 {isInactive ? 'Campagne indisponible' : 'Faire un don'}
               </button>
 
-              {/* Test popup */}
-              <button
-                onClick={() => {
-                  console.log('Test popup cliqué');
-                  setShowThankYouPopup(true);
-                }}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors mb-4"
-              >
-                TEST POPUP
-              </button>
 
 
               <div className="grid grid-cols-2 gap-3 text-center">
