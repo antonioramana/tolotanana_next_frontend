@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
 import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiHeart, FiX, FiPlay } from 'react-icons/fi';
-import { DonationsApi, BankApi } from '@/lib/api';
+import { DonationsApi, BankApi, CampaignThankYouMessagesApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/utils';
@@ -19,11 +19,13 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [donationMessage, setDonationMessage] = useState('');
   const [donorName, setDonorName] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('mobile_money');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedMedia, setSelectedMedia] = useState<null | { kind: 'image' | 'video'; src: string }>(null);
   const [adminBankInfos, setAdminBankInfos] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showThankYouPopup, setShowThankYouPopup] = useState(false);
+  const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
   const router = useRouter();
   const { toast } = useToast();
 
@@ -35,7 +37,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   useEffect(() => {
     const loadAdminBankInfos = async () => {
       try {
-        const bankInfos = await BankApi.list();
+        const bankInfos = await BankApi.getAdminInfo();
         setAdminBankInfos(Array.isArray(bankInfos) ? bankInfos : []);
       } catch (error) {
         console.error('Erreur lors du chargement des informations bancaires de l\'admin:', error);
@@ -44,12 +46,28 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
     loadAdminBankInfos();
   }, []);
 
+  // Charger le message de remerciement personnalisé
+  useEffect(() => {
+    const loadThankYouMessage = async () => {
+      try {
+        const message = await CampaignThankYouMessagesApi.getActive(campaign.id);
+        if (message && message.message) {
+          setThankYouMessage(message.message);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du message de remerciement:', error);
+      }
+    };
+    loadThankYouMessage();
+  }, [campaign.id]);
+
   useEffect(() => {
     if (currentUser) {
       const full = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
       setDonorName(full || '');
     }
   }, [currentUser]);
+
 
   // Debug: log raw campaign data
   useEffect(() => {
@@ -108,25 +126,58 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
     }
   };
 
+  // Fonction pour filtrer les informations bancaires selon la méthode de paiement
+  const getFilteredBankInfos = () => {
+    if (!adminBankInfos.length) return [];
+    
+    switch (paymentMethod) {
+      case 'mobile_money':
+        return adminBankInfos.filter(info => info.type === 'mobile_money');
+      case 'bank_account':
+        return adminBankInfos.filter(info => info.type === 'bank_account');
+      case 'espece':
+        // Pour les espèces, on peut afficher des instructions spéciales
+        return [];
+      default:
+        return adminBankInfos;
+    }
+  };
+
   const handleDonation = async () => {
+    console.log('🚨🚨🚨 DÉBUT handleDonation - CETTE FONCTION S\'EXÉCUTE-T-ELLE ? 🚨🚨🚨');
+    console.log('donationAmount:', donationAmount);
+    console.log('isInactive:', isInactive);
+    console.log('isAnonymous:', isAnonymous);
+    console.log('donorName:', donorName);
+    console.log('thankYouMessage:', thankYouMessage);
+    
+    setIsSubmitting(true);
+    
     const amountNum = parseFloat(donationAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
+      console.log('❌ Montant invalide');
       toast({ title: 'Montant invalide', description: 'Veuillez saisir un montant valide supérieur à 0.', variant: 'destructive' });
+      setIsSubmitting(false);
       return;
     }
     if (isInactive) {
+      console.log('❌ Campagne inactive');
       toast({ title: 'Campagne indisponible', description: 'Cette campagne est terminée ou inactive.', variant: 'destructive' });
+      setIsSubmitting(false);
       return;
     }
 
     if (!isAnonymous && !donorName.trim()) {
+      console.log('❌ Nom requis');
       toast({ title: 'Nom requis', description: 'Veuillez saisir votre nom pour le don.', variant: 'destructive' });
+      setIsSubmitting(false);
       return;
     }
 
+    console.log('✅ Validation passée, création du don...');
     try {
       const finalIsAnonymous = isAnonymous;
-      await DonationsApi.create({
+      console.log('Données du don:', {
         campaignId: campaign.id,
         amount: amountNum,
         message: donationMessage || undefined,
@@ -134,19 +185,33 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
         isAnonymous: finalIsAnonymous,
         paymentMethod,
       });
+      
+      const result = await DonationsApi.create({
+        campaignId: campaign.id,
+        amount: amountNum,
+        message: donationMessage || undefined,
+        donorName: finalIsAnonymous ? undefined : donorName.trim(),
+        isAnonymous: finalIsAnonymous,
+        paymentMethod,
+      });
+      
+      console.log('✅ Don créé avec succès:', result);
+      
+      // Fermer le modal de don
       setShowDonationModal(false);
       setDonationAmount('');
       setDonationMessage('');
       setDonorName(currentUser ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() : '');
       setIsAnonymous(false);
-      // Utiliser le message de remerciement personnalisé de la campagne ou un message par défaut
-      const thankYouMessage = campaign.thankYouMessage || 'Merci pour votre don ! Votre contribution a été enregistrée.';
-      toast({ title: 'Don enregistré !', description: thankYouMessage });
+      
+      // Afficher le popup de remerciement
+      setShowThankYouPopup(true);
+      
       if (onRefetch) onRefetch();
+      setIsSubmitting(false);
     } catch (e: any) {
+      console.error('❌ Erreur lors de la création du don:', e);
       toast({ title: 'Echec du don', description: 'Impossible de créer le don. Réessayez.', variant: 'destructive' });
-      console.error('Donation error', e);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -348,6 +413,18 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               >
                 {isInactive ? 'Campagne indisponible' : 'Faire un don'}
               </button>
+
+              {/* Test popup */}
+              <button
+                onClick={() => {
+                  console.log('Test popup cliqué');
+                  setShowThankYouPopup(true);
+                }}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors mb-4"
+              >
+                TEST POPUP
+              </button>
+
 
               <div className="grid grid-cols-2 gap-3 text-center">
                 <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
@@ -556,10 +633,9 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
-                  <option value="card">Carte</option>
-                  <option value="bank_transfer">Virement bancaire</option>
                   <option value="mobile_money">Mobile Money</option>
-                  <option value="cash">Espèces</option>
+                  <option value="bank_account">Virement bancaire</option>
+                  <option value="espece">Espèces</option>
                 </select>
               </div>
 
@@ -578,51 +654,98 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             </div>
 
             {/* Infos de paiement */}
-            {adminBankInfos.length > 0 && (
-              <div className="space-y-4 mt-6">
-                <div className="border rounded-xl p-4 bg-orange-50 border-orange-200">
-                  <h4 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                    <FiHeart className="w-4 h-4 text-orange-600" />
-                    Informations de paiement
-                  </h4>
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    {adminBankInfos.map((bankInfo, index) => (
-                      <div key={bankInfo.id || index} className="bg-white rounded-lg p-3 border border-orange-200">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-gray-600 font-medium">
-                            {bankInfo.type === 'mobile_money' ? 'Mobile Money' : 'Compte bancaire'}
-                          </span>
-                          {bankInfo.isDefault && (
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                              Par défaut
-                            </span>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Titulaire</span>
-                            <span className="font-medium text-gray-900">{bankInfo.accountName}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Numéro</span>
-                            <span className="font-medium text-gray-900 font-mono">{bankInfo.accountNumber}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">
-                              {bankInfo.type === 'mobile_money' ? 'Fournisseur' : 'Banque'}
-                            </span>
-                            <span className="font-medium text-gray-900">{bankInfo.provider}</span>
-                          </div>
-                        </div>
+            {(() => {
+              const filteredBankInfos = getFilteredBankInfos();
+              
+              if (paymentMethod === 'espece') {
+                return (
+                  <div className="space-y-4 mt-6">
+                    <div className="border rounded-xl p-4 bg-blue-50 border-blue-200">
+                      <h4 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                        <FiHeart className="w-4 h-4 text-blue-600" />
+                        Paiement en espèces
+                      </h4>
+                      <div className="text-sm text-gray-700">
+                        <p className="mb-2">Pour effectuer un don en espèces, veuillez :</p>
+                        <ul className="list-disc list-inside space-y-1 text-xs">
+                          <li>Contacter directement l'organisateur de la campagne</li>
+                          <li>Ou nous contacter via les coordonnées de l'administrateur</li>
+                          <li>Prévoir un reçu de don pour votre contribution</li>
+                        </ul>
                       </div>
-                    ))}
-                    <p className="text-xs text-gray-600 mt-2">
-                      💡 Utilisez ces informations pour effectuer un virement vers l'administrateur
-                    </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              }
+
+              if (filteredBankInfos.length > 0) {
+                return (
+                  <div className="space-y-4 mt-6">
+                    <div className="border rounded-xl p-4 bg-orange-50 border-orange-200">
+                      <h4 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                        <FiHeart className="w-4 h-4 text-orange-600" />
+                        Informations de paiement - {paymentMethod === 'mobile_money' ? 'Mobile Money' : 
+                        paymentMethod === 'bank_account' ? 'Virement bancaire' : 'Paiement'}
+                      </h4>
+                      <div className="space-y-3 text-xs sm:text-sm">
+                        {filteredBankInfos.map((bankInfo, index) => (
+                          <div key={bankInfo.id || index} className="bg-white rounded-lg p-3 border border-orange-200">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-gray-600 font-medium">
+                                {bankInfo.type === 'mobile_money' ? 'Mobile Money' : 'Compte bancaire'}
+                              </span>
+                              {bankInfo.isDefault && (
+                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                                  Par défaut
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Titulaire</span>
+                                <span className="font-medium text-gray-900">{bankInfo.accountName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Numéro</span>
+                                <span className="font-medium text-gray-900 font-mono">{bankInfo.accountNumber}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">
+                                  {bankInfo.type === 'mobile_money' ? 'Fournisseur' : 'Banque'}
+                                </span>
+                                <span className="font-medium text-gray-900">{bankInfo.provider}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <p className="text-xs text-gray-600 mt-2">
+                          💡 Utilisez ces informations pour effectuer un virement vers l'administrateur
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (adminBankInfos.length > 0) {
+                return (
+                  <div className="space-y-4 mt-6">
+                    <div className="border rounded-xl p-4 bg-yellow-50 border-yellow-200">
+                      <h4 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                        <FiHeart className="w-4 h-4 text-yellow-600" />
+                        Aucune information disponible
+                      </h4>
+                      <p className="text-sm text-yellow-800">
+                        Aucune information de paiement disponible pour la méthode sélectionnée. 
+                        Veuillez choisir une autre méthode de paiement ou contacter l'administrateur.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {adminBankInfos.length === 0 && (
               <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
@@ -638,13 +761,58 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                 Annuler
               </button>
               <button
-                onClick={handleDonation}
+                onClick={() => {
+                  console.log('🖱️ BOUTON CONTINUER CLIQUÉ !');
+                  console.log('donationAmount:', donationAmount);
+                  console.log('isInactive:', isInactive);
+                  console.log('disabled condition:', !donationAmount || isInactive);
+                  handleDonation();
+                }}
                 disabled={!donationAmount || isInactive}
                 className={`flex-1 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isInactive ? 'bg-gray-400' : 'bg-orange-500 hover:bg-orange-600'}`}
               >
                 Continuer
               </button>
             </div>
+            
+          </div>
+        </div>
+      )}
+
+      {/* Popup de remerciement */}
+      {showThankYouPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="relative bg-white rounded-2xl w-full max-w-md p-8 text-center shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300">
+            {/* Icône de succès */}
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+              <FiHeart className="h-8 w-8 text-green-600" />
+            </div>
+            
+            {/* Titre */}
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              Merci pour votre don ! 🎉
+            </h3>
+            
+            {/* Message personnalisé */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+              <p className="text-gray-700 leading-relaxed">
+                {thankYouMessage || 'Merci pour votre don ! Votre contribution a été enregistrée.'}
+              </p>
+            </div>
+            
+            {/* Informations supplémentaires */}
+            <div className="text-sm text-gray-600 mb-6">
+              <p>Votre contribution nous aide énormément à atteindre notre objectif.</p>
+              <p className="mt-2">Vous recevrez un email de confirmation sous peu.</p>
+            </div>
+            
+            {/* Bouton de fermeture */}
+            <button
+              onClick={() => setShowThankYouPopup(false)}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+            >
+              Parfait !
+            </button>
           </div>
         </div>
       )}

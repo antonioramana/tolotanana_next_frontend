@@ -125,8 +125,7 @@ export default function MyCampaignsPage() {
           setShowUpdateModal(true);
           break;
         case 'thank_you':
-          setSelectedCampaign(campaignId);
-          setShowThankYouMessageModal(true);
+          router.push(`/dashboard/campaigns/${campaignId}/thank-you-messages`);
           break;
         case 'pause':
           await CampaignsApi.updateStatus(campaignId, 'paused');

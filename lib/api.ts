@@ -119,6 +119,18 @@ export const BankApi = {
     api<any>(`/bank-info/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   remove: (id: string) => api<any>(`/bank-info/${id}`, { method: 'DELETE' }),
   setDefault: (id: string) => api<any>(`/bank-info/${id}`, { method: 'PATCH', body: JSON.stringify({ isDefault: true }) }),
+  getAdminInfo: () => apiPublic<any[]>('/public/bank-info/admin'),
+};
+
+export const CampaignThankYouMessagesApi = {
+  list: (campaignId: string) => api<any[]>(`/campaign-thank-you-messages?campaignId=${campaignId}`),
+  create: (payload: { campaignId: string; message: string }) =>
+    api<any>('/campaign-thank-you-messages', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id: string, payload: { message?: string; isActive?: boolean }) =>
+    api<any>(`/campaign-thank-you-messages/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  remove: (id: string) => api<any>(`/campaign-thank-you-messages/${id}`, { method: 'DELETE' }),
+  setActive: (id: string) => api<any>(`/campaign-thank-you-messages/${id}/set-active`, { method: 'PATCH' }),
+  getActive: (campaignId: string) => apiPublic<any>(`/public/campaign-thank-you-messages/campaign/${campaignId}/active`),
 };
 
 export const UploadApi = {

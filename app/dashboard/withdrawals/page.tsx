@@ -82,12 +82,10 @@ export default function UserWithdrawalsPage() {
 
   const formatAmount = (amount: number | string) => {
     const num = typeof amount === "string" ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "MGA",
-      minimumFractionDigits: 0, 
+    return (new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(num || 0);
+    }).format(num || 0)) + " Ar";
   };
   
 

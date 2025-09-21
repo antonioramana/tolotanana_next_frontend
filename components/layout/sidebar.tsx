@@ -30,7 +30,6 @@ export default function Sidebar({ userRole }: SidebarProps) {
     { icon: FiCreditCard, label: 'Transactions', href: '/admin/transactions' },
     { icon: FiTrendingUp, label: 'Retraits', href: '/admin/withdrawals' },
     { icon: FiCheckCircle, label: 'Vérification', href: '/admin/campaign-verification' },
-    { icon: FiSettings, label: 'Paramètres', href: '/admin/settings' },
     { icon: FiDollarSign, label: 'Infos Bancaires', href: '/admin/settings/bank-info' },
     { icon: FiFileText, label: 'Politiques d\'utilisation', href: '/admin/settings/terms-of-service' },
   ];

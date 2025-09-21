@@ -66,12 +66,13 @@ export default function AdminWithdrawalsPage() {
   };
 
   const formatAmount = (amount: number | string) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(num || 0);
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return (new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(num || 0)) + " Ar";
   };
+  
 
   const getStatusBadge = (status: string) => {
     switch (status) {
