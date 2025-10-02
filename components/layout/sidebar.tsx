@@ -30,8 +30,8 @@ export default function Sidebar({ userRole }: SidebarProps) {
     { icon: FiCreditCard, label: 'Transactions', href: '/admin/transactions' },
     { icon: FiTrendingUp, label: 'Retraits', href: '/admin/withdrawals' },
     { icon: FiCheckCircle, label: 'Vérification', href: '/admin/campaign-verification' },
-    { icon: FiDollarSign, label: 'Infos Bancaires', href: '/admin/settings/bank-info' },
-    { icon: FiFileText, label: 'Politiques d\'utilisation', href: '/admin/settings/terms-of-service' },
+    { icon: FiMessageSquare, label: 'Messages Contact', href: '/admin/contact' },
+    { icon: FiSettings, label: 'Paramètres', href: '/admin/settings' },
   ];
 
   const menuItems = userRole === 'admin' ? adminMenuItems : demandeurMenuItems;
@@ -41,7 +41,10 @@ export default function Sidebar({ userRole }: SidebarProps) {
       <div className="p-6 sm:p-8 overflow-y-auto">
         <nav className="space-y-2">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Pour les liens Paramètres, activer si on est sur n'importe quelle sous-page de settings
+            const isActive = (item.href === '/admin/settings' || item.href === '/dashboard/settings')
+              ? pathname.startsWith(item.href)
+              : pathname === item.href;
             return (
               <Link
                 key={item.href}

@@ -186,4 +186,66 @@ export const TermsOfServiceApi = {
   delete: (id: string) => api<any>(`/terms-of-service/${id}`, { method: 'DELETE' }),
 };
 
+export const PlatformFeesApi = {
+  create: (payload: { percentage: number; description?: string }) => api<any>('/platform-fees', { method: 'POST', body: JSON.stringify(payload) }),
+  list: () => api<any>('/platform-fees'),
+  getActive: () => api<any>('/platform-fees/active'),
+  getById: (id: string) => api<any>(`/platform-fees/${id}`),
+  update: (id: string, payload: { percentage?: number; description?: string; isActive?: boolean }) => api<any>(`/platform-fees/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  setActive: (id: string) => api<any>(`/platform-fees/${id}/set-active`, { method: 'PATCH' }),
+  delete: (id: string) => api<any>(`/platform-fees/${id}`, { method: 'DELETE' }),
+};
+
+export const PublicPlatformFeesApi = {
+  getActive: () => apiPublic<{ percentage: number; description?: string }>('/public/platform-fees/active'),
+};
+
+export const ContactApi = {
+  getAll: (page?: number, limit?: number, filter?: 'unread' | 'replied' | 'all') => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', page.toString());
+    if (limit) params.append('limit', limit.toString());
+    if (filter) params.append('filter', filter);
+    return api<any>(`/contact?${params.toString()}`);
+  },
+  getStats: () => api<{ total: number; unread: number; replied: number; pending: number }>('/contact/stats'),
+  getById: (id: string) => api<any>(`/contact/${id}`),
+  markAsRead: (id: string) => api<any>(`/contact/${id}/read`, { method: 'PATCH' }),
+  reply: (id: string, payload: { reply: string }) => api<any>(`/contact/${id}/reply`, { method: 'POST', body: JSON.stringify(payload) }),
+  delete: (id: string) => api<any>(`/contact/${id}`, { method: 'DELETE' }),
+};
+
+export const PublicContactApi = {
+  send: (payload: { name: string; email: string; subject: string; message: string }) => 
+    apiPublic<{ id: string; message: string }>('/public/contact', { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+// Testimonials API (Admin)
+export const TestimonialsApi = {
+  create: (payload: { name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; isActive?: boolean; isHighlight?: boolean }) => 
+    api<any>('/testimonials', { method: 'POST', body: JSON.stringify(payload) }),
+  list: (includeInactive?: boolean) => {
+    const params = includeInactive ? '?includeInactive=true' : '';
+    return api<any>(`/testimonials${params}`);
+  },
+  getStats: () => api<{ total: number; active: number; highlighted: number; averageRating: number; byRole: Array<{ role: string; count: number }> }>('/testimonials/stats'),
+  getById: (id: string) => api<any>(`/testimonials/${id}`),
+  update: (id: string, payload: { name?: string; role?: string; avatar?: string; content?: string; campaign?: string; rating?: number; isActive?: boolean; isHighlight?: boolean }) => 
+    api<any>(`/testimonials/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  toggleActive: (id: string) => api<any>(`/testimonials/${id}/toggle-active`, { method: 'PATCH' }),
+  toggleHighlight: (id: string) => api<any>(`/testimonials/${id}/toggle-highlight`, { method: 'PATCH' }),
+  delete: (id: string) => api<any>(`/testimonials/${id}`, { method: 'DELETE' }),
+};
+
+// Public Testimonials API
+export const PublicTestimonialsApi = {
+  getAll: () => apiPublic<Array<{ id: string; name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; isHighlight: boolean; createdAt: string }>>('/public/testimonials'),
+  getHighlighted: () => apiPublic<Array<{ id: string; name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; createdAt: string }>>('/public/testimonials/highlighted'),
+};
+
+// Dashboard API (Admin)
+export const DashboardApi = {
+  getStats: () => api<any>('/dashboard/stats'),
+};
+
 export { api, apiPublic, getAuthToken, API_BASE };

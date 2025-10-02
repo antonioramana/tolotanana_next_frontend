@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
 import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiHeart, FiX, FiPlay } from 'react-icons/fi';
-import { DonationsApi, BankApi, CampaignThankYouMessagesApi } from '@/lib/api';
+import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/utils';
@@ -26,12 +26,39 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYouPopup, setShowThankYouPopup] = useState(false);
   const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
+  const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
-  }, []);
+    loadPlatformFees();
+    
+    // Vérifier s'il y a un popup en attente dans localStorage
+    const keys = Object.keys(localStorage);
+    const popupKeys = keys.filter(key => key.startsWith(`thank-you-popup-${campaign.id}`));
+    
+    if (popupKeys.length > 0) {
+      const latestKey = popupKeys.sort().pop();
+      if (latestKey) {
+        try {
+          const popupData = JSON.parse(localStorage.getItem(latestKey) || '{}');
+          const age = Date.now() - popupData.timestamp;
+          
+          // Si le popup a moins de 30 secondes, l'afficher
+          if (age < 30000 && popupData.show) {
+            setThankYouMessage(popupData.message || thankYouMessage);
+            setShowThankYouPopup(true);
+            localStorage.removeItem(latestKey);
+          } else {
+            localStorage.removeItem(latestKey);
+          }
+        } catch (error) {
+          console.error('Erreur lecture localStorage:', error);
+        }
+      }
+    }
+  }, [campaign.id]);
 
   // Charger les informations bancaires de l'admin
   useEffect(() => {
@@ -53,13 +80,29 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
         const message = await CampaignThankYouMessagesApi.getActive(campaign.id);
         if (message && message.message) {
           setThankYouMessage(message.message);
+        } else {
+          setThankYouMessage('Merci pour votre don ! Votre contribution a été enregistrée avec succès. 🙏');
         }
       } catch (error) {
         console.error('Erreur lors du chargement du message de remerciement:', error);
+        setThankYouMessage('Merci pour votre don ! Votre contribution a été enregistrée avec succès. 🙏');
       }
     };
-    loadThankYouMessage();
+    
+    if (campaign.id) {
+      loadThankYouMessage();
+    }
   }, [campaign.id]);
+
+  const loadPlatformFees = async () => {
+    try {
+      const fees = await PublicPlatformFeesApi.getActive();
+      setPlatformFees(fees);
+    } catch (error) {
+      console.error('Erreur lors du chargement des frais:', error);
+      // Garder les frais par défaut de 5% en cas d'erreur
+    }
+  };
 
   useEffect(() => {
     if (currentUser) {
@@ -67,6 +110,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
       setDonorName(full || '');
     }
   }, [currentUser]);
+
 
 
   // Debug: log raw campaign data
@@ -144,58 +188,42 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   };
 
   const handleDonation = async () => {
-    console.log('🚨🚨🚨 DÉBUT handleDonation - CETTE FONCTION S\'EXÉCUTE-T-ELLE ? 🚨🚨🚨');
-    console.log('donationAmount:', donationAmount);
-    console.log('isInactive:', isInactive);
-    console.log('isAnonymous:', isAnonymous);
-    console.log('donorName:', donorName);
-    console.log('thankYouMessage:', thankYouMessage);
     
     setIsSubmitting(true);
     
     const amountNum = parseFloat(donationAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      console.log('❌ Montant invalide');
       toast({ title: 'Montant invalide', description: 'Veuillez saisir un montant valide supérieur à 0.', variant: 'destructive' });
       setIsSubmitting(false);
       return;
     }
     if (isInactive) {
-      console.log('❌ Campagne inactive');
       toast({ title: 'Campagne indisponible', description: 'Cette campagne est terminée ou inactive.', variant: 'destructive' });
       setIsSubmitting(false);
       return;
     }
 
     if (!isAnonymous && !donorName.trim()) {
-      console.log('❌ Nom requis');
       toast({ title: 'Nom requis', description: 'Veuillez saisir votre nom pour le don.', variant: 'destructive' });
       setIsSubmitting(false);
       return;
     }
-
-    console.log('✅ Validation passée, création du don...');
     try {
       const finalIsAnonymous = isAnonymous;
-      console.log('Données du don:', {
+      const donationData = {
         campaignId: campaign.id,
         amount: amountNum,
         message: donationMessage || undefined,
         donorName: finalIsAnonymous ? undefined : donorName.trim(),
         isAnonymous: finalIsAnonymous,
         paymentMethod,
-      });
+      };
       
-      const result = await DonationsApi.create({
-        campaignId: campaign.id,
-        amount: amountNum,
-        message: donationMessage || undefined,
-        donorName: finalIsAnonymous ? undefined : donorName.trim(),
-        isAnonymous: finalIsAnonymous,
-        paymentMethod,
-      });
+      const result = await DonationsApi.create(donationData);
       
-      console.log('✅ Don créé avec succès:', result);
+      if (!result || !result.id) {
+        throw new Error('Donation non créée');
+      }
       
       // Fermer le modal de don
       setShowDonationModal(false);
@@ -207,10 +235,31 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
       // Afficher le popup de remerciement
       setShowThankYouPopup(true);
       
-      if (onRefetch) onRefetch();
+      // Sauvegarder dans localStorage pour persister après rafraîchissement
+      const popupKey = `thank-you-popup-${campaign.id}-${Date.now()}`;
+      localStorage.setItem(popupKey, JSON.stringify({
+        show: true,
+        message: thankYouMessage,
+        timestamp: Date.now()
+      }));
+      
+      // Rafraîchir les données après un délai pour éviter la réinitialisation
+      setTimeout(() => {
+        if (onRefetch) {
+          onRefetch();
+        }
+      }, 3000);
+      
       setIsSubmitting(false);
+      
+      // Afficher un toast de succès également
+      toast({
+        title: 'Don effectué avec succès !',
+        description: 'Votre contribution a été enregistrée. Merci pour votre générosité !',
+        variant: 'default',
+      });
     } catch (e: any) {
-      console.error('❌ Erreur lors de la création du don:', e);
+      console.error('Erreur lors de la création du don:', e);
       toast({ title: 'Echec du don', description: 'Impossible de créer le don. Réessayez.', variant: 'destructive' });
       setIsSubmitting(false);
     }
@@ -743,6 +792,18 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               </div>
             )}
 
+            {/* Informations importantes sur le processus */}
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2 text-sm">ℹ️ Informations importantes</h4>
+              <div className="text-xs text-blue-800 space-y-1">
+                <p>• Votre don sera <strong>en attente de validation</strong> par l'administrateur</p>
+                <p>• Une fois validé, le montant sera ajouté au total de la campagne</p>
+                <p>• Des <strong>frais de plateforme de {platformFees.percentage}%</strong> sont appliqués</p>
+                <p>• Vous recevrez une confirmation par email</p>
+              </div>
+            </div>
+
+
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <button
                 onClick={() => setShowDonationModal(false)}
@@ -751,17 +812,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                 Annuler
               </button>
               <button
-                onClick={() => {
-                  console.log('🖱️ BOUTON CONTINUER CLIQUÉ !');
-                  console.log('donationAmount:', donationAmount);
-                  console.log('isInactive:', isInactive);
-                  console.log('disabled condition:', !donationAmount || isInactive);
-                  handleDonation();
-                }}
-                disabled={!donationAmount || isInactive}
+                onClick={handleDonation}
+                disabled={!donationAmount || isInactive || isSubmitting}
                 className={`flex-1 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isInactive ? 'bg-gray-400' : 'bg-orange-500 hover:bg-orange-600'}`}
               >
-                Continuer
+                {isSubmitting ? 'Traitement...' : 'Continuer'}
               </button>
             </div>
             
@@ -771,38 +826,86 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
       {/* Popup de remerciement */}
       {showThankYouPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="relative bg-white rounded-2xl w-full max-w-md p-8 text-center shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300">
-            {/* Icône de succès */}
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
-              <FiHeart className="h-8 w-8 text-green-600" />
-            </div>
-            
-            {/* Titre */}
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Merci pour votre don ! 🎉
-            </h3>
-            
-            {/* Message personnalisé */}
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-              <p className="text-gray-700 leading-relaxed">
-                {thankYouMessage || 'Merci pour votre don ! Votre contribution a été enregistrée.'}
-              </p>
-            </div>
-            
-            {/* Informations supplémentaires */}
-            <div className="text-sm text-gray-600 mb-6">
-              <p>Votre contribution nous aide énormément à atteindre notre objectif.</p>
-              <p className="mt-2">Vous recevrez un email de confirmation sous peu.</p>
-            </div>
-            
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+          <div className="relative bg-white rounded-2xl w-full max-w-lg p-8 text-center shadow-2xl animate-in fade-in-0 zoom-in-95 duration-500">
             {/* Bouton de fermeture */}
             <button
               onClick={() => setShowThankYouPopup(false)}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Fermer"
             >
-              Parfait !
+              <FiX className="w-5 h-5 text-gray-500" />
             </button>
+            
+            {/* Icône de succès animée */}
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6 animate-pulse">
+              <FiHeart className="h-10 w-10 text-green-600" />
+            </div>
+            
+            {/* Titre */}
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              Don effectué avec succès ! 🎉
+            </h3>
+            
+            {/* Sous-titre */}
+            <p className="text-gray-600 mb-6">
+              Merci pour votre générosité envers cette campagne
+            </p>
+            
+            {/* Message personnalisé de la campagne */}
+            <div className="bg-gradient-to-r from-orange-50 to-pink-50 border border-orange-200 rounded-xl p-6 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <FiHeart className="w-4 h-4 text-orange-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Message de l'organisateur :</h4>
+                  <p className="text-gray-700 leading-relaxed text-left">
+                    {thankYouMessage || 'Merci pour votre don ! Votre contribution a été enregistrée avec succès. 🙏'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Informations supplémentaires */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-2">Prochaines étapes :</p>
+                <ul className="text-left space-y-1">
+                  <li>• Votre don est actuellement <strong>en attente de validation</strong></li>
+                  <li>• L'administrateur va vérifier et valider votre don</li>
+                  <li>• Une fois validé, le montant sera ajouté au total de la campagne</li>
+                  
+                </ul>
+                <div className="mt-3 pt-2 border-t border-blue-300">
+                  <p className="text-xs text-blue-700">
+                    <strong>Note :</strong> Des frais de plateforme ({platformFees.percentage}%) sont appliqués pour couvrir les coûts de fonctionnement.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Boutons d'action */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowThankYouPopup(false)}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              >
+                Parfait !
+              </button>
+              <button
+                onClick={() => {
+                  setShowThankYouPopup(false);
+                  // Optionnel : rediriger vers d'autres campagnes
+                  router.push('/campaigns');
+                }}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors"
+              >
+                Voir d'autres campagnes
+              </button>
+            </div>
           </div>
         </div>
       )}

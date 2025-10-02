@@ -4,12 +4,27 @@ import { useRouter } from 'next/navigation';
 import { paymentMethods } from '@/lib/fake-data';
 import { FiCreditCard, FiSmartphone, FiShield, FiLock, FiCheck } from 'react-icons/fi';
 import { getStoredUser } from '@/lib/auth-client';
+import { PublicPlatformFeesApi } from '@/lib/api';
 
 export default function PaymentPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
+  
   useEffect(() => {
     setCurrentUser(getStoredUser());
+    loadPlatformFees();
   }, []);
+
+  const loadPlatformFees = async () => {
+    try {
+      const fees = await PublicPlatformFeesApi.getActive();
+      setPlatformFees(fees);
+    } catch (error) {
+      console.error('Erreur lors du chargement des frais:', error);
+      // Garder les frais par défaut de 5% en cas d'erreur
+    }
+  };
+
   const [selectedMethod, setSelectedMethod] = useState('Orange Money');
   const [paymentData, setPaymentData] = useState({
     amount: '50000',
@@ -219,15 +234,23 @@ export default function PaymentPage() {
                   <span className="font-medium">{formatAmount(paymentData.amount)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Frais de plateforme ({platformFees.percentage}%)</span>
+                  <span className="font-medium">{formatAmount((parseInt(paymentData.amount) * (platformFees.percentage / 100)).toString())}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Frais de traitement</span>
                   <span className="font-medium">0 Ar</span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between">
-                    <span className="font-semibold text-gray-900">Total</span>
+                    <span className="font-semibold text-gray-900">Total à payer</span>
                     <span className="font-semibold text-orange-600 text-lg">
                       {formatAmount(paymentData.amount)}
                     </span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-500">Montant pour la campagne</span>
+                    <span className="text-gray-500">{formatAmount((parseInt(paymentData.amount) * (1 - platformFees.percentage / 100)).toString())}</span>
                   </div>
                 </div>
               </div>
@@ -235,6 +258,13 @@ export default function PaymentPage() {
               <div className="mb-6">
                 <h4 className="font-medium text-gray-900 mb-2">Campagne</h4>
                 <p className="text-sm text-gray-600">Aide pour les frais médicaux de ma fille</p>
+              </div>
+
+              <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-800">
+                  <strong>ℹ️ Important :</strong> Votre don sera en attente de validation par l'administrateur. 
+                  Une fois validé, le montant sera ajouté au total de la campagne.
+                </p>
               </div>
 
               <button

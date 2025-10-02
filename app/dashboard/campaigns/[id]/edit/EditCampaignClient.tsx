@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CatalogApi, CampaignsApi, UploadApi } from '@/lib/api';
-import { FiArrowLeft, FiSave, FiUpload, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiSave, FiUpload, FiX, FiHeart } from 'react-icons/fi';
 
 export default function EditCampaignClient() {
   const params = useParams();
@@ -147,6 +147,28 @@ export default function EditCampaignClient() {
           <FiSave className="w-5 h-5 mr-2" />
           {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
+      </div>
+
+      {/* Section Messages de remerciement */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <FiHeart className="w-5 h-5 text-pink-500" />
+              Messages de remerciement
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Personnalisez les messages qui s'affichent après chaque don sur votre campagne
+            </p>
+          </div>
+          <Link
+            href={`/dashboard/campaigns/${campaignId}/thank-you-messages`}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <FiHeart className="w-4 h-4" />
+            Gérer les messages
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">

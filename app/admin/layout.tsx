@@ -13,21 +13,27 @@ export default function AdminLayout({
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const user = getStoredUser();
+    console.log('Layout admin - Utilisateur récupéré:', user);
+    
     if (!user) {
-      router.replace('/login');
+      console.log('Layout admin - Pas d\'utilisateur, redirection vers /admin-login');
+      router.replace('/admin-login');
       return;
     }
     if (user.role !== 'admin') {
+      console.log('Layout admin - Utilisateur non admin, redirection vers /dashboard');
       router.replace('/dashboard');
       return;
     }
+    
+    console.log('Layout admin - Utilisateur admin validé:', user);
     setCurrentUser(user);
     setIsCheckingAuth(false);
   }, [router]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (isCheckingAuth) {
     return null;

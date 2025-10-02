@@ -1,74 +1,306 @@
+'use client';
+
+import { useState } from 'react';
+import { PublicContactApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FiMail, FiUser, FiMessageSquare, FiSend, FiPhone, FiMapPin, FiClock } from 'react-icons/fi';
+
 export default function ContactPage() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez remplir tous les champs',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await PublicContactApi.send(formData);
+      
+      toast({
+        title: 'Message envoyé !',
+        description: response.message,
+      });
+
+      // Réinitialiser le formulaire
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Erreur lors de l\'envoi du message',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Contactez-nous</h1>
-          <p className="mt-3 text-gray-600">Nous sommes là pour vous aider. Envoyez-nous un message et nous vous répondrons rapidement.</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-2 bg-white shadow-2xl rounded-2xl p-6 sm:p-8">
-            <form className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
-                  <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Votre prénom" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
-                  <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Votre nom" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="vous@email.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-                  <input type="tel" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Votre numéro" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sujet</label>
-                <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Sujet de votre message" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea rows={5} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Écrivez votre message ici..." />
-              </div>
-
-              <div className="flex justify-center lg:justify-end">
-                <button type="submit" className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">Envoyer</button>
-              </div>
-            </form>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="container mx-auto px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Contactez-nous
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Vous avez une question, une suggestion ou besoin d'aide ? 
+              N'hésitez pas à nous contacter, nous vous répondrons dans les plus brefs délais.
+            </p>
           </div>
 
-          <div className="space-y-6">
-            <div className="bg-white shadow-2xl rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-gray-900">Informations</h2>
-              <p className="mt-2 text-sm text-gray-600">Pour toute question concernant les campagnes, les dons ou votre compte.</p>
-              <div className="mt-4 space-y-2 text-sm text-gray-700">
-                <p><span className="font-medium">Email:</span> contact@tolotanana.com</p>
-                <p><span className="font-medium">Téléphone:</span> +261 34 00 000 00</p>
-                <p><span className="font-medium">Adresse:</span> Antananarivo, Madagascar</p>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Informations de contact */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FiMail className="h-5 w-5 text-orange-600" />
+                    Informations de Contact
+                  </CardTitle>
+                  <CardDescription>
+                    Plusieurs moyens pour nous joindre
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-start gap-3">
+                    <FiMail className="h-5 w-5 text-orange-600 mt-1" />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Email</h3>
+                      <p className="text-gray-600">contact@tolotanana.com</p>
+                      <p className="text-gray-600">support@tolotanana.com</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <FiPhone className="h-5 w-5 text-orange-600 mt-1" />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Téléphone</h3>
+                      <p className="text-gray-600">+261 34 12 345 67</p>
+                      <p className="text-gray-600">+261 33 98 765 43</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <FiMapPin className="h-5 w-5 text-orange-600 mt-1" />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Adresse</h3>
+                      <p className="text-gray-600">
+                        123 Avenue de l'Indépendance<br />
+                        Antananarivo 101<br />
+                        Madagascar
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <FiClock className="h-5 w-5 text-orange-600 mt-1" />
+                    <div>
+                      <h3 className="font-medium text-gray-900">Horaires</h3>
+                      <p className="text-gray-600">
+                        Lundi - Vendredi: 8h00 - 17h00<br />
+                        Samedi: 8h00 - 12h00<br />
+                        Dimanche: Fermé
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl p-6">
-              <h3 className="text-lg font-semibold">Vous souhaitez lancer une campagne ?</h3>
-              <p className="mt-2 text-sm text-orange-50">Créez votre campagne en quelques minutes et commencez à collecter des fonds.</p>
-              <a href="/dashboard/create-campaign" className="inline-block mt-4 bg-white text-orange-600 font-semibold px-4 py-2 rounded-lg hover:bg-orange-50">Créer une campagne</a>
+            {/* Formulaire de contact */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FiMessageSquare className="h-5 w-5 text-orange-600" />
+                    Envoyez-nous un message
+                  </CardTitle>
+                  <CardDescription>
+                    Remplissez le formulaire ci-dessous et nous vous répondrons rapidement
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name">
+                          <FiUser className="inline mr-2 h-4 w-4" />
+                          Nom complet *
+                        </Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          type="text"
+                          value={formData.name}
+                          onChange={handleChange}
+                          placeholder="Votre nom complet"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">
+                          <FiMail className="inline mr-2 h-4 w-4" />
+                          Email *
+                        </Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          placeholder="votre.email@example.com"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="subject">
+                        <FiMessageSquare className="inline mr-2 h-4 w-4" />
+                        Sujet *
+                      </Label>
+                      <Input
+                        id="subject"
+                        name="subject"
+                        type="text"
+                        value={formData.subject}
+                        onChange={handleChange}
+                        placeholder="Sujet de votre message"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="message">
+                        <FiMessageSquare className="inline mr-2 h-4 w-4" />
+                        Message *
+                      </Label>
+                      <Textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleChange}
+                        placeholder="Décrivez votre demande en détail..."
+                        rows={6}
+                        required
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600">
+                        * Champs obligatoires
+                      </p>
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Envoi en cours...
+                          </>
+                        ) : (
+                          <>
+                            <FiSend className="mr-2 h-4 w-4" />
+                            Envoyer le message
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
+          </div>
+
+          {/* FAQ Section */}
+          <div className="mt-16">
+            <Card>
+              <CardHeader>
+                <CardTitle>Questions Fréquentes</CardTitle>
+                <CardDescription>
+                  Trouvez rapidement des réponses aux questions les plus courantes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      Comment créer une campagne ?
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Inscrivez-vous, accédez à votre tableau de bord et cliquez sur "Nouvelle campagne". 
+                      Suivez les étapes pour configurer votre campagne.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      Quels sont les frais de plateforme ?
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Les frais de plateforme sont variables et affichés lors de chaque don. 
+                      Ils couvrent les coûts de fonctionnement et de sécurité.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      Comment retirer mes fonds ?
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Accédez à la section "Retraits" de votre tableau de bord, 
+                      configurez vos informations bancaires et demandez un retrait.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">
+                      Délai de réponse ?
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Nous nous efforçons de répondre à tous les messages dans les 24-48 heures 
+                      pendant les jours ouvrables.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-

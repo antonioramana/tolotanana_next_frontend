@@ -2,14 +2,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CampaignCard from '@/components/ui/campaign-card';
-import { testimonials } from '@/lib/fake-data';
 import { FiArrowRight, FiShield, FiTrendingUp, FiUsers, FiHeart, FiStar, FiMessageSquare } from 'react-icons/fi';
 import { getStoredUser } from '@/lib/auth-client';
-import { CatalogApi } from '@/lib/api';
+import { CatalogApi, PublicTestimonialsApi } from '@/lib/api';
+import { PublicTestimonial } from '@/types';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [featuredCampaigns, setFeaturedCampaigns] = useState<any[]>([]);
+  const [testimonials, setTestimonials] = useState<PublicTestimonial[]>([]);
   const [stats, setStats] = useState<{ label: string; value: string; icon: any }[]>([
     { label: 'Fonds collectés', value: '—', icon: FiTrendingUp },
     { label: 'Campagnes actives', value: '—', icon: FiHeart },
@@ -27,11 +28,15 @@ export default function Home() {
     async function load() {
       setLoading(true);
       try {
-        // Récupérer toutes les campagnes pour calculer les stats
-        const campaigns = await CatalogApi.campaigns('');
+        // Récupérer toutes les campagnes pour calculer les stats et les témoignages
+        const [campaigns, testimonialsData] = await Promise.all([
+          CatalogApi.campaigns(''),
+          PublicTestimonialsApi.getHighlighted().catch(() => []) // Fallback en cas d'erreur
+        ]);
         if (!cancelled) {
           const normalizedCampaigns = Array.isArray(campaigns) ? campaigns : [];
           setFeaturedCampaigns(normalizedCampaigns.filter(c => c.status === 'active').slice(0, 3));
+          setTestimonials(testimonialsData || []);
           
           // Calculer les stats à partir des campagnes
           const totalRaised = normalizedCampaigns.reduce((sum, c) => {
@@ -230,16 +235,27 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {testimonials.map((testimonial) => (
-              <div key={testimonial.id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  </div>
+            {testimonials.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-500">Aucun témoignage disponible pour le moment.</p>
+              </div>
+            ) : (
+              testimonials.map((testimonial) => (
+                <div key={testimonial.id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                  <div className="flex items-center mb-4">
+                    <div className="flex-shrink-0">
+                      {testimonial.avatar ? (
+                        <img
+                          src={testimonial.avatar}
+                          alt={testimonial.name}
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                          <FiUsers className="w-6 h-6 text-orange-600" />
+                        </div>
+                      )}
+                    </div>
                   <div className="ml-4 flex-1">
                     <h4 className="text-lg font-semibold text-gray-900">{testimonial.name}</h4>
                     <p className="text-sm text-orange-600 font-medium">{testimonial.role}</p>
@@ -264,11 +280,12 @@ export default function Home() {
                 
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs text-gray-500 font-medium">
-                    Campagne : {testimonial.campaign}
+                    Campagne : {testimonial.campaign || 'Non spécifiée'}
                   </p>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
           
           <div className="text-center mt-12">

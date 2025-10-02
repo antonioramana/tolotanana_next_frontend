@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiX, FiMail, FiLock, FiEye, FiEyeOff, FiUser } from 'react-icons/fi';
+import { FiX, FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiShield } from 'react-icons/fi';
+import Link from 'next/link';
 import { setStoredUser } from '@/lib/auth-client';
 import { AuthApi } from '@/lib/api';
 
@@ -49,12 +50,16 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       const res = await AuthApi.login({ email: form.email, password: form.password });
       const token = (res as any).token;
       const user = (res as any).user || {};
-      setStoredUser({ ...user, token });
+      
+      // Bloquer les administrateurs - ils doivent utiliser /admin/login
       if (user.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
+        setError('admin_redirect');
+        setIsLoading(false);
+        return;
       }
+      
+      setStoredUser({ ...user, token });
+      router.push('/dashboard');
       close();
     } catch (err: any) {
       setError('Email ou mot de passe incorrect');
@@ -121,7 +126,31 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
           {activeTab === 'login' ? (
             <form onSubmit={handleLogin} className="px-6 py-6 space-y-4">
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{error}</div>
+                <div className={`border rounded-lg p-3 text-sm ${
+                  error === 'admin_redirect' 
+                    ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                    : 'bg-red-50 border-red-200 text-red-700'
+                }`}>
+                  {error === 'admin_redirect' ? (
+                    <div className="flex items-start space-x-2">
+                      <FiShield className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium mb-1">Accès administrateur</p>
+                        <p className="mb-2">Les administrateurs doivent utiliser la page de connexion dédiée.</p>
+                        <Link 
+                          href="/admin-login"
+                          className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                          onClick={close}
+                        >
+                          <FiShield className="w-4 h-4 mr-1" />
+                          Connexion administrateur
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    error
+                  )}
+                </div>
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
@@ -143,6 +172,19 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
               <button type="submit" disabled={isLoading} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50">
                 {isLoading ? 'Connexion...' : 'Se connecter'}
               </button>
+              
+              {/* Lien vers connexion admin */}
+              {/* <div className="text-center pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 mb-2">Vous êtes administrateur ?</p>
+                <Link 
+                  href="/admin-login"
+                  className="inline-flex items-center text-sm text-gray-600 hover:text-gray-800 font-medium"
+                  onClick={close}
+                >
+                  <FiShield className="w-4 h-4 mr-1" />
+                  Connexion administrateur
+                </Link>
+              </div> */}
             </form>
           ) : (
             <form onSubmit={handleRegister} className="px-6 py-6 space-y-4">

@@ -47,8 +47,16 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 TOLOTANANA. Tous droits réservés.</p>
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center text-gray-400">
+            <p>&copy; 2024 TOLOTANANA. Tous droits réservés.</p>
+            <Link 
+              href="/admin-login" 
+              className="text-xs text-gray-500 hover:text-gray-300 mt-2 sm:mt-0"
+            >
+              Espace administrateur
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
