@@ -174,8 +174,8 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
               </button>
               
               {/* Lien vers connexion admin */}
-              {/* <div className="text-center pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500 mb-2">Vous êtes administrateur ?</p>
+              <div className="text-center pt-4 border-t border-gray-200">
+                {/* <p className="text-xs text-gray-500 mb-2">Vous êtes administrateur ?</p>
                 <Link 
                   href="/admin-login"
                   className="inline-flex items-center text-sm text-gray-600 hover:text-gray-800 font-medium"
@@ -183,8 +183,8 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                 >
                   <FiShield className="w-4 h-4 mr-1" />
                   Connexion administrateur
-                </Link>
-              </div> */}
+                </Link> */}
+              </div>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="px-6 py-6 space-y-4">

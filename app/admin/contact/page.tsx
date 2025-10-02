@@ -301,7 +301,6 @@ export default function AdminContactPage() {
           <div 
             key={message.id} 
             style={{ 
-              backgroundColor: 'white',
               border: !message.isRead ? '2px solid #bfdbfe' : '1px solid #e5e7eb',
               borderRadius: '8px',
               padding: '1.5rem',

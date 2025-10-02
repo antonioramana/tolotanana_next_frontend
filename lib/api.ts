@@ -240,7 +240,7 @@ export const TestimonialsApi = {
 // Public Testimonials API
 export const PublicTestimonialsApi = {
   getAll: () => apiPublic<Array<{ id: string; name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; isHighlight: boolean; createdAt: string }>>('/public/testimonials'),
-  getHighlighted: () => apiPublic<Array<{ id: string; name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; createdAt: string }>>('/public/testimonials/highlighted'),
+  getHighlighted: () => apiPublic<Array<{ id: string; name: string; role: string; avatar?: string; content: string; campaign?: string; rating: number; isHighlight: boolean; createdAt: string }>>('/public/testimonials/highlighted'),
 };
 
 // Dashboard API (Admin)
