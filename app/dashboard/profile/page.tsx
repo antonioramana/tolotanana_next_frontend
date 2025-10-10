@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { FiUser, FiMail, FiPhone, FiCalendar, FiEdit3, FiSave, FiX, FiUpload, FiCheck, FiAlertCircle } from 'react-icons/fi';
-import { UsersApi, DonationsApi, CampaignsApi } from '@/lib/api';
+import { UsersApi, CampaignsApi, UploadApi } from '@/lib/api';
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -9,12 +9,14 @@ export default function UserProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     phone: '',
     avatar: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<{ firstName?: string; lastName?: string; phone?: string; avatar?: string }>({});
   const [stats, setStats] = useState({
     totalDonations: 0,
     totalCampaigns: 0,
@@ -49,17 +51,21 @@ export default function UserProfilePage() {
   const loadStats = async () => {
     try {
       // Load user's donations
-      const donationsData = await UsersApi.getMyDonations('?page=1&limit=1000');
+      const donationsData = await UsersApi.getMyDonations('?page=1&limit=100');
       const donations = Array.isArray(donationsData?.data) ? donationsData.data : (Array.isArray(donationsData) ? donationsData : []);
       
       // Load user's campaigns
-      const campaignsData = await CampaignsApi.myCampaigns('?page=1&limit=1000');
+      const campaignsData = await CampaignsApi.myCampaigns('?page=1&limit=100');
       const campaigns = Array.isArray(campaignsData?.data) ? campaignsData.data : (Array.isArray(campaignsData) ? campaignsData : []);
 
       const totalDonations = donations.length;
       const totalCampaigns = campaigns.length;
       const totalAmountDonated = donations.reduce((sum: number, donation: any) => sum + (parseFloat(donation.amount) || 0), 0);
-      const totalAmountRaised = campaigns.reduce((sum: number, campaign: any) => sum + (parseFloat(campaign.currentAmount) || 0), 0);
+      const totalAmountRaised = campaigns.reduce((sum: number, campaign: any) => {
+        const current = parseFloat(campaign.currentAmount) || 0;
+        const total = parseFloat(campaign.totalRaised) || current;
+        return sum + total;
+      }, 0);
 
       setStats({
         totalDonations,
@@ -90,6 +96,7 @@ export default function UserProfilePage() {
     try {
       setSaving(true);
       setError(null);
+      setFieldErrors({});
       
       const updateData = {
         firstName: formData.firstName,
@@ -108,9 +115,64 @@ export default function UserProfilePage() {
       localStorage.setItem('auth_user', JSON.stringify(updatedUser));
       
     } catch (e: any) {
-      setError(e.message || 'Erreur lors de la mise à jour du profil');
+      // Essayer d'extraire les erreurs détaillées du backend
+      try {
+        const parsed = JSON.parse(e.message || '{}');
+        const messages: string[] = Array.isArray(parsed?.message) ? parsed.message : (parsed?.message ? [parsed.message] : []);
+        if (messages.length > 0) {
+          setError(messages.join(' \n'));
+          // Mappage simple des messages aux champs
+          const newFieldErrors: typeof fieldErrors = {};
+          for (const msg of messages) {
+            const lower = String(msg).toLowerCase();
+            if (lower.includes('téléphone') || lower.includes('telephone') || lower.includes('phone')) {
+              newFieldErrors.phone = msg;
+            }
+            if (lower.includes('prénom') || lower.includes('prenom') || lower.includes('first')) {
+              newFieldErrors.firstName = msg;
+            }
+            if (lower.includes('nom') || lower.includes('last')) {
+              newFieldErrors.lastName = msg;
+            }
+            if (lower.includes('avatar')) {
+              newFieldErrors.avatar = msg;
+            }
+          }
+          setFieldErrors(newFieldErrors);
+        } else {
+          setError(e.message || 'Erreur lors de la mise à jour du profil');
+        }
+      } catch {
+        setError(e.message || 'Erreur lors de la mise à jour du profil');
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      // Validation simple côté client
+      const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        throw new Error('Format d\'image invalide. Utilisez PNG, JPG ou WEBP.');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image trop lourde (max 5MB).');
+      }
+
+      const url = await UploadApi.uploadFile(file);
+      setFormData((prev) => ({ ...prev, avatar: url }));
+    } catch (err: any) {
+      setError(err.message || 'Échec du téléversement de l\'image');
+    } finally {
+      setUploading(false);
+      // reset input to allow re-select same file
+      e.target.value = '';
     }
   };
 
@@ -182,17 +244,35 @@ export default function UserProfilePage() {
           <div className="flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                {profile?.avatar ? (
+              <div className="relative w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden ring-1 ring-gray-200">
+                {(editing ? (formData.avatar || profile?.avatar) : profile?.avatar) ? (
                   <img 
-                    src={profile.avatar} 
+                    src={editing ? (formData.avatar || profile?.avatar) : profile?.avatar} 
                     alt="Avatar" 
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <FiUser className="w-12 h-12 text-gray-400" />
                 )}
+                {editing && formData.avatar && (
+                  <span className="absolute bottom-1 inset-x-0 mx-auto w-fit text-[10px] px-2 py-0.5 rounded-full bg-black/60 text-white">Aperçu</span>
+                )}
               </div>
+              {editing && (
+                <div className="mt-3">
+                  <label className="inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                    <FiUpload className="w-4 h-4 mr-2" />
+                    {uploading ? 'Téléversement...' : 'Téléverser une image'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarFileChange}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Profile Info */}
@@ -251,7 +331,7 @@ export default function UserProfilePage() {
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border ${fieldErrors.phone ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-orange-500'} rounded-lg focus:ring-2 focus:border-transparent`}
                       placeholder="+33 1 23 45 67 89"
                     />
                   ) : (
@@ -259,6 +339,9 @@ export default function UserProfilePage() {
                       <FiPhone className="w-4 h-4 mr-2 text-gray-400" />
                       {profile?.phone || '—'}
                     </p>
+                  )}
+                  {editing && fieldErrors.phone && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>
                   )}
                 </div>
 
@@ -306,20 +389,7 @@ export default function UserProfilePage() {
                   </p>
                 </div>
 
-                {editing && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Avatar (URL)
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.avatar}
-                      onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="https://example.com/avatar.jpg"
-                    />
-                  </div>
-                )}
+                {/* Champ URL retiré: on utilise uniquement l'upload avec aperçu */}
               </div>
             </div>
           </div>
@@ -350,7 +420,7 @@ export default function UserProfilePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -398,7 +468,7 @@ export default function UserProfilePage() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Error Message */}
       {error && (

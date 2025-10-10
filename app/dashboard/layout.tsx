@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/sidebar';
 import { FiMenu, FiX } from 'react-icons/fi';
-import { getStoredUser } from '@/lib/auth-client';
+import { getStoredUser, startSessionWatcher, stopSessionWatcher, isTokenExpired, clearStoredUser } from '@/lib/auth-client';
 
 export default function DashboardLayout({
   children,
@@ -24,8 +24,21 @@ export default function DashboardLayout({
       router.replace('/admin');
       return;
     }
+    if (isTokenExpired()) {
+      clearStoredUser();
+      router.replace('/login');
+      return;
+    }
     setCurrentUser(user);
     setIsCheckingAuth(false);
+
+    startSessionWatcher(() => {
+      router.replace('/login');
+    }, 5000);
+
+    return () => {
+      stopSessionWatcher();
+    };
   }, [router]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 

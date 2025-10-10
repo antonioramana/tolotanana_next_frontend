@@ -112,66 +112,72 @@ export default function CampaignsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-            {/* Search */}
-            <div className="relative w-full lg:w-1/2 xl:w-3/5">
-               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-               <input
-                 type="text"
-                 placeholder="Rechercher une campagne..."
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-               />
-            </div>
+{/* Search and Filters */}
+<div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-8 w-full max-w-full overflow-hidden">
+  <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-stretch lg:items-center w-full">
 
-            {/* Filters */}
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 sm:gap-4 w-full lg:flex-1 lg:min-w-[380px]">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="">Toutes les catégories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
+    {/* Search */}
+    <div className="relative w-full lg:flex-1 min-w-0">
+      <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <input
+        type="text"
+        placeholder="Rechercher une campagne..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      />
+    </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="recent">Plus récentes</option>
-                <option value="popular">Plus populaires</option>
-                <option value="amount">Montant collecté</option>
-                <option value="ending">Fin bientôt</option>
-              </select>
+    {/* Filters */}
+    <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-3 w-full lg:w-auto">
+      <select
+        value={selectedCategory}
+        onChange={(e) => setSelectedCategory(e.target.value)}
+        className="flex-1 min-w-[150px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      >
+        <option value="">Toutes les catégories</option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>{category.name}</option>
+        ))}
+      </select>
 
-              {/* View Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto lg:shrink-0 justify-center">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'grid' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-600'
-                  }`}
-                >
-                  <FiGrid className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
-                    viewMode === 'list' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-600'
-                  }`}
-                >
-                  <FiList className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <select
+        value={sortBy}
+        onChange={(e) => setSortBy(e.target.value)}
+        className="flex-1 min-w-[150px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      >
+        <option value="recent">Plus récentes</option>
+        <option value="popular">Plus populaires</option>
+        <option value="amount">Montant collecté</option>
+        <option value="ending">Fin bientôt</option>
+      </select>
+
+      {/* View Mode Toggle */}
+      <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto justify-center lg:shrink-0">
+        <button
+          onClick={() => setViewMode('grid')}
+          className={`p-2 rounded-md transition-colors ${
+            viewMode === 'grid'
+              ? 'bg-white shadow-sm text-orange-600'
+              : 'text-gray-600 hover:text-orange-500'
+          }`}
+        >
+          <FiGrid className="w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={`p-2 rounded-md transition-colors ${
+            viewMode === 'list'
+              ? 'bg-white shadow-sm text-orange-600'
+              : 'text-gray-600 hover:text-orange-500'
+          }`}
+        >
+          <FiList className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

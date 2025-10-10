@@ -11,19 +11,29 @@ export default function UserWithdrawalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadWithdrawals();
     loadCampaigns();
     loadBankInfos();
-  }, []);
+  }, [page]);
 
   const loadWithdrawals = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await WithdrawalsApi.myRequests('?sortBy=createdAt&sortOrder=desc');
-      setWithdrawals(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
+      const params = new URLSearchParams();
+      params.append('page', String(page));
+      params.append('limit', String(itemsPerPage));
+      params.append('sortBy', 'createdAt');
+      params.append('sortOrder', 'desc');
+      const data = await WithdrawalsApi.myRequests(`?${params.toString()}`);
+      const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setWithdrawals(list);
+      if ((data as any)?.meta?.totalPages) setTotalPages((data as any).meta.totalPages);
     } catch (e) {
       setError('Erreur de chargement des demandes de retrait');
     } finally {
@@ -352,6 +362,33 @@ export default function UserWithdrawalsPage() {
         )}
       </div>
 
+      {/* Pagination */}
+      {!loading && !error && withdrawals.length > 0 && totalPages > 1 && (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Page {page} sur {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Précédent
+              </button>
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Withdrawal Modal */}
       {showCreateForm && (
         <CreateWithdrawalModal
@@ -375,7 +412,8 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
     amount: '',
     bankInfoId: '',
     justification: '',
-    documents: [] as string[]
+    documents: [] as string[],
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -457,8 +495,13 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
           {selectedCampaign && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-700">
-                <strong>Montant disponible :</strong> {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(selectedCampaign.currentAmount) || 0)}
-              </p>
+              <strong>Montant disponible :</strong>{' '}
+                  {new Intl.NumberFormat('fr-MG', {
+                    style: 'currency',
+                    currency: 'MGA',
+                    currencyDisplay: 'code',
+                  }).format(parseFloat(selectedCampaign.currentAmount) || 0).replace('MGA', 'Ar')}
+                </p>
             </div>
           )}
 
@@ -505,6 +548,20 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
                 ⚠️ Aucun compte bancaire configuré. <a href="/dashboard/settings" className="text-orange-600 hover:underline">Ajoutez vos informations bancaires</a> d'abord.
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mot de passe *
+            </label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              placeholder="Votre mot de passe"
+              required
+            />
           </div>
 
           <div>

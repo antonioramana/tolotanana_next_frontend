@@ -57,6 +57,12 @@ export default function AdminLoginPage() {
       
       console.log('Données sauvegardées:', { ...user, token });
       
+      // Vider les champs du formulaire après connexion réussie
+      setFormData({
+        email: '',
+        password: '',
+      });
+      
       toast({
         title: 'Connexion réussie',
         description: 'Bienvenue dans l\'espace administrateur !',

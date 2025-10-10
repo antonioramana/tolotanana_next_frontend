@@ -1,10 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { FiEye, FiCheck, FiX, FiPause, FiPlay, FiFlag, FiSearch } from 'react-icons/fi';
+import SimplePagination from '@/components/ui/simple-pagination';
 import { CampaignsApi } from '@/lib/api';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
@@ -13,7 +16,7 @@ export default function AdminCampaignsPage() {
 
   useEffect(() => {
     loadCampaigns();
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, page]);
 
   const loadCampaigns = async () => {
     try {
@@ -22,12 +25,14 @@ export default function AdminCampaignsPage() {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter) params.append('status', statusFilter);
-      params.append('page', '1');
+      params.append('page', String(page));
       params.append('limit', '50');
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
       const res = await fetch(`${apiBase}/campaigns?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      setCampaigns(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
+      const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setCampaigns(items);
+      if (data?.meta?.totalPages) setTotalPages(data.meta.totalPages);
     } catch (e) {
       setError('Erreur de chargement');
     } finally {
@@ -253,8 +258,8 @@ export default function AdminCampaignsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px' }}>
-                  Collecté
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '140px' }}>
+                  Progression
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                   Donateurs
@@ -303,11 +308,30 @@ export default function AdminCampaignsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {formatAmount(campaign.currentAmount)}
+                      {formatAmount(campaign.totalRaised || campaign.currentAmount)}
                     </div>
                     <div className="text-xs text-gray-500">
                       sur {formatAmount(campaign.targetAmount)}
                     </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div
+                        className="bg-gradient-to-r from-orange-500 to-orange-600 h-1.5 rounded-full"
+                        style={{ 
+                          width: `${Math.min(
+                            ((campaign.totalRaised || campaign.currentAmount) / campaign.targetAmount) * 100, 
+                            100
+                          )}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {Math.round(((campaign.totalRaised || campaign.currentAmount) / campaign.targetAmount) * 100)}%
+                    </div>
+                    {campaign.totalRaised > campaign.currentAmount && (
+                      <div className="text-xs text-blue-600 mt-1">
+                        Disponible: {formatAmount(campaign.currentAmount)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {campaign._count?.donations || 0}
@@ -339,13 +363,6 @@ export default function AdminCampaignsPage() {
                         <option value="cancelled">Annulée</option>
                       </select>
                       
-                      <button
-                        onClick={() => alert('Signalement envoyé')}
-                        className="text-orange-600 hover:text-orange-900 p-1 rounded"
-                        title="Signaler"
-                      >
-                        <FiFlag className="w-4 h-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -360,6 +377,8 @@ export default function AdminCampaignsPage() {
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx充分"></div>
         </div>
       )}
+
+      <SimplePagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

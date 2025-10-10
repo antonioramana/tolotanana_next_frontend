@@ -2,16 +2,19 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FiMenu, FiX, FiUser, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiHeart } from 'react-icons/fi';
 import { clearStoredUser, getStoredUser } from '@/lib/auth-client';
 import AuthModal from '@/components/layout/auth-modal';
+import NotificationBell from '@/components/notifications/NotificationBell';
+
+type AuthTab = 'login' | 'register';
 
 export default function Header({ user: userProp }: { user?: any }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<any>(userProp);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authInitialTab, setAuthInitialTab] = useState<'login' | 'register'>('login');
+  const [authInitialTab, setAuthInitialTab] = useState<AuthTab>('login');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -46,6 +49,8 @@ export default function Header({ user: userProp }: { user?: any }) {
   const handleLogout = () => {
     console.log('Déconnexion utilisateur');
     clearStoredUser();
+    // Vider les champs d'authentification dans localStorage
+    localStorage.removeItem('auth_form_data');
     router.push('/login');
     setUser(null);
   };
@@ -78,13 +83,22 @@ export default function Header({ user: userProp }: { user?: any }) {
             <Link href="/contact" className="text-gray-700 hover:text-orange-600 font-medium transition-colors">
               Contact
             </Link>
+            {user && (
+              <Link href="/dashboard/favorites" className="inline-flex items-center text-gray-700 hover:text-orange-600 font-medium transition-colors">
+                <FiHeart className="w-4 h-4 mr-1" /> Favoris
+              </Link>
+            )}
             
             {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-2 transition-colors"
-                >
+              <div className="flex items-center space-x-4">
+                {/* Notifications */}
+                <NotificationBell />
+                
+                <div className="relative">
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-2 transition-colors"
+                  >
                   <img 
                     src={user.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop'}
                     alt="Profile"
@@ -102,6 +116,15 @@ export default function Header({ user: userProp }: { user?: any }) {
                       <FiUser className="w-4 h-4 mr-3" />
                       Dashboard
                     </Link>
+                    {user?.role === 'admin' && (
+                      <Link
+                        href="/admin/profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <FiSettings className="w-4 h-4 mr-3" />
+                        Profil admin
+                      </Link>
+                    )}
                     <Link
                       href={`${getDashboardUrl()}/profile`}
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -118,6 +141,7 @@ export default function Header({ user: userProp }: { user?: any }) {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center space-x-4">
@@ -170,6 +194,14 @@ export default function Header({ user: userProp }: { user?: any }) {
               >
                 Contact
               </Link>
+              {user && (
+                <Link
+                  href="/dashboard/favorites"
+                  className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-orange-600"
+                >
+                  Favoris
+                </Link>
+              )}
               
               {user ? (
                 <>

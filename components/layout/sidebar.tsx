@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FiHome, FiPlus, FiList, FiBarChart2, FiUser, FiSettings,
-  FiUsers, FiFlag, FiDollarSign, FiTrendingUp, FiHeart, FiCreditCard, FiCheckCircle, FiMessageSquare, FiFileText
+  FiUsers, FiFlag, FiDollarSign, FiTrendingUp, FiHeart, FiCreditCard, FiCheckCircle, FiMessageSquare, FiFileText, FiTag
 } from 'react-icons/fi';
 
 interface SidebarProps {
@@ -25,6 +25,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
   const adminMenuItems = [
     { icon: FiHome, label: 'Vue d\'ensemble', href: '/admin' },
     { icon: FiFlag, label: 'Campagnes', href: '/admin/campaigns' },
+    { icon: FiTag, label: 'Catégories', href: '/admin/categories' },
     { icon: FiHeart, label: 'Dons', href: '/admin/donations' },
     { icon: FiUsers, label: 'Utilisateurs', href: '/admin/users' },
     { icon: FiCreditCard, label: 'Transactions', href: '/admin/transactions' },
@@ -37,7 +38,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
   const menuItems = userRole === 'admin' ? adminMenuItems : demandeurMenuItems;
 
   return (
-    <div className="bg-white shadow-xl border-r border-gray-200 h-full flex flex-col">
+    <div className="bg-white shadow-xl border-r border-gray-200 h-full flex flex-col dark:bg-orange-50 dark:text-gray-700">
       <div className="p-6 sm:p-8 overflow-y-auto">
         <nav className="space-y-2">
           {menuItems.map((item) => {

@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiX, FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiShield } from 'react-icons/fi';
+import { FiX, FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiShield, FiCheck } from 'react-icons/fi';
 import Link from 'next/link';
 import { setStoredUser } from '@/lib/auth-client';
 import { AuthApi } from '@/lib/api';
+import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
+import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 
-type Tab = 'login' | 'register';
+type Tab = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
 interface AuthModalProps {
   open: boolean;
@@ -21,6 +23,8 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -28,18 +32,55 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
     phone: '',
     password: '',
     confirmPassword: '',
+    verificationCode: '',
     role: 'demandeur',
     acceptTerms: false,
   });
 
   useEffect(() => {
     setActiveTab(initialTab);
+    // Restaurer les données de formulaire sauvegardées
+    const savedFormData = localStorage.getItem('auth_form_data');
+    if (savedFormData) {
+      try {
+        const parsed = JSON.parse(savedFormData);
+        setForm(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.warn('Erreur lors de la restauration des données de formulaire:', error);
+      }
+    }
   }, [initialTab]);
+
+  // Sauvegarder les données de formulaire à chaque changement
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem('auth_form_data', JSON.stringify(form));
+    }, 500); // Délai pour éviter trop de sauvegardes
+    return () => clearTimeout(timeoutId);
+  }, [form]);
 
   if (!open) return null;
 
   const close = () => {
     onClose();
+    // Réinitialiser les états
+    setResetSuccess(false);
+    setError('');
+    setForgotPasswordEmail('');
+    // Vider les champs du formulaire
+    setForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      verificationCode: '',
+      role: 'demandeur',
+      acceptTerms: false,
+    });
+    // Supprimer les données sauvegardées
+    localStorage.removeItem('auth_form_data');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,10 +100,91 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       }
       
       setStoredUser({ ...user, token });
+      // Vider les champs avant la redirection
+      setForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        verificationCode: '',
+        role: 'demandeur',
+        acceptTerms: false,
+      });
+      // Supprimer les données sauvegardées
+      localStorage.removeItem('auth_form_data');
       router.push('/dashboard');
       close();
     } catch (err: any) {
       setError('Email ou mot de passe incorrect');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    // Validation
+    if (!form.verificationCode.trim() || form.verificationCode.length !== 6) {
+      setError('Le code de vérification doit contenir exactement 6 chiffres');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!form.password.trim() || form.password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères');
+      setIsLoading(false);
+      return;
+    }
+    
+    if (form.password !== form.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      await AuthApi.resetPassword({
+        email: forgotPasswordEmail,
+        verificationCode: form.verificationCode,
+        password: form.password,
+      });
+      
+      // Réinitialiser le formulaire
+      setForm(prev => ({ ...prev, verificationCode: '', password: '', confirmPassword: '' }));
+      setError('');
+      
+      // Passer à l'onglet de connexion et afficher un message de succès
+      setActiveTab('login');
+      setResetSuccess(true);
+      setError(''); // Effacer les erreurs
+      
+      // Effacer le message de succès après 5 secondes
+      setTimeout(() => {
+        setResetSuccess(false);
+      }, 5000);
+    } catch (err: any) {
+      console.error('Erreur réinitialisation mot de passe:', err);
+      
+      let errorMessage = 'Impossible de réinitialiser le mot de passe';
+      
+      if (err.message) {
+        if (err.message.includes('Code de vérification incorrect')) {
+          errorMessage = 'Le code de vérification est incorrect';
+        } else if (err.message.includes('Code de vérification expiré')) {
+          errorMessage = 'Le code de vérification a expiré. Demandez un nouveau code.';
+        } else if (err.message.includes('Aucun code de vérification trouvé')) {
+          errorMessage = 'Aucun code de vérification trouvé. Demandez un nouveau code.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +211,20 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       const token = (res as any).token;
       const user = (res as any).user || {};
       setStoredUser({ ...user, token });
+      // Vider les champs avant la redirection
+      setForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        verificationCode: '',
+        role: 'demandeur',
+        acceptTerms: false,
+      });
+      // Supprimer les données sauvegardées
+      localStorage.removeItem('auth_form_data');
       router.push('/dashboard');
       close();
     } catch (err: any) {
@@ -117,6 +253,20 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
               >
                 Inscription
               </button>
+              {activeTab === 'forgot-password' && (
+                <button
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-100 text-orange-700"
+                >
+                  Mot de passe oublié
+                </button>
+              )}
+              {activeTab === 'reset-password' && (
+                <button
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-100 text-orange-700"
+                >
+                  Nouveau mot de passe
+                </button>
+              )}
             </div>
             <button onClick={close} className="p-2 rounded hover:bg-gray-100">
               <FiX />
@@ -125,6 +275,17 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
 
           {activeTab === 'login' ? (
             <form onSubmit={handleLogin} className="px-6 py-6 space-y-4">
+              {resetSuccess && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                  <div className="flex items-center space-x-2">
+                    <FiCheck className="w-4 h-4 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Mot de passe réinitialisé !</p>
+                      <p>Votre mot de passe a été mis à jour avec succès. Vous pouvez maintenant vous connecter.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {error && (
                 <div className={`border rounded-lg p-3 text-sm ${
                   error === 'admin_redirect' 
@@ -173,6 +334,17 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                 {isLoading ? 'Connexion...' : 'Se connecter'}
               </button>
               
+              {/* Lien mot de passe oublié */}
+              <div className="text-center">
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('forgot-password')}
+                  className="text-sm text-orange-600 hover:text-orange-800 font-medium"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
+              
               {/* Lien vers connexion admin */}
               <div className="text-center pt-4 border-t border-gray-200">
                 {/* <p className="text-xs text-gray-500 mb-2">Vous êtes administrateur ?</p>
@@ -186,6 +358,121 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                 </Link> */}
               </div>
             </form>
+          ) : activeTab === 'forgot-password' ? (
+            <div className="px-6 py-6">
+              <ForgotPasswordForm 
+                onBack={() => setActiveTab('login')}
+                onSuccess={(email, code) => {
+                  setForgotPasswordEmail(email);
+                  setActiveTab('reset-password');
+                }}
+              />
+            </div>
+          ) : activeTab === 'reset-password' ? (
+            <div className="px-6 py-6">
+              <div className="space-y-4">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Nouveau mot de passe
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Entrez votre nouveau mot de passe pour {forgotPasswordEmail}
+                  </p>
+                </div>
+
+                <form onSubmit={handleResetPassword} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Code de vérification</label>
+                    <div className="relative">
+                      <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input 
+                        type="text" 
+                        required 
+                        value={form.verificationCode} 
+                        onChange={(e) => setForm({...form, verificationCode: e.target.value})} 
+                        className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                        placeholder="Entrez le code à 6 chiffres"
+                        maxLength={6}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+                    <div className="relative">
+                      <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input 
+                        type={showPassword ? 'text' : 'password'} 
+                        required 
+                        value={form.password} 
+                        onChange={(e) => setForm({...form, password: e.target.value})} 
+                        className="pl-10 pr-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                        placeholder="Minimum 8 caractères"
+                        disabled={isLoading}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+                    <div className="relative">
+                      <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input 
+                        type={showPassword ? 'text' : 'password'} 
+                        required 
+                        value={form.confirmPassword} 
+                        onChange={(e) => setForm({...form, confirmPassword: e.target.value})} 
+                        className="pl-10 pr-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                        placeholder="Répétez le mot de passe"
+                        disabled={isLoading}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? <FiEyeOff /> : <FiEye />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit" 
+                    disabled={isLoading || !form.verificationCode.trim() || !form.password.trim() || !form.confirmPassword.trim()} 
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isLoading ? 'Réinitialisation...' : 'Réinitialiser le mot de passe'}
+                  </button>
+
+                  <div className="text-center">
+                    <button 
+                      type="button"
+                      onClick={() => setActiveTab('forgot-password')}
+                      className="text-sm text-orange-600 hover:text-orange-800 font-medium"
+                      disabled={isLoading}
+                    >
+                      ← Retour à la demande
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleRegister} className="px-6 py-6 space-y-4">
               {error && (

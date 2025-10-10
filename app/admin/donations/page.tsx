@@ -184,44 +184,51 @@ export default function AdminDonationsPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-          <div className="relative w-full lg:w-1/2 xl:w-3/5">
-             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-             <input
-               type="text"
-               placeholder="Rechercher par donateur, campagne ou message..."
-               value={searchTerm}
-               onChange={(e) => handleFilterChange('search', e.target.value)}
-               className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-             />
-           </div>
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 w-full max-w-full overflow-hidden">
+  <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-stretch lg:items-center w-full">
+    
+    {/* Champ de recherche */}
+    <div className="relative w-full lg:flex-1 min-w-0">
+      <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <input
+        type="text"
+        placeholder="Rechercher par donateur, campagne ou message..."
+        value={searchTerm}
+        onChange={(e) => handleFilterChange('search', e.target.value)}
+        className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      />
+    </div>
 
-          <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 sm:gap-4 w-full lg:flex-1 lg:min-w-[360px]">
-            <select
-              value={statusFilter}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              <option value="">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="completed">Validé</option>
-              <option value="failed">Échoué</option>
-            </select>
+    {/* Filtres */}
+    <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-3 w-full lg:w-auto">
+      <select
+        value={statusFilter}
+        onChange={(e) => handleFilterChange('status', e.target.value)}
+        className="flex-1 min-w-[150px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      >
+        <option value="">Tous les statuts</option>
+        <option value="pending">En attente</option>
+        <option value="completed">Validé</option>
+        <option value="failed">Échoué</option>
+      </select>
 
-            <select
-              value={campaignFilter}
-              onChange={(e) => handleFilterChange('campaign', e.target.value)}
-              className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              <option value="">Toutes les campagnes</option>
-              {campaigns.map((campaign) => (
-                <option key={campaign.id} value={campaign.id}>{campaign.title}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <select
+        value={campaignFilter}
+        onChange={(e) => handleFilterChange('campaign', e.target.value)}
+        className="flex-1 min-w-[150px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base"
+      >
+        <option value="">Toutes les campagnes</option>
+        {campaigns.map((campaign) => (
+          <option key={campaign.id} value={campaign.id}>
+            {campaign.title}
+          </option>
+        ))}
+      </select>
+    </div>
+
+  </div>
+</div>
+
 
       {/* Donations Table */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">

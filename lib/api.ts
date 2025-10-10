@@ -1,12 +1,39 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
 
+function parseJwt(token: string): any | null {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem('auth_user');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed?.token ?? null;
+    const token: string | undefined = parsed?.token;
+    if (!token) return null;
+    const payload = parseJwt(token);
+    if (payload && typeof payload.exp === 'number') {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (payload.exp <= nowSeconds) {
+        // Token expired: clear stored user
+        try { localStorage.removeItem('auth_user'); } catch {}
+        return null;
+      }
+    }
+    return token;
   } catch {
     return null;
   }
@@ -27,6 +54,18 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      try { localStorage.removeItem('auth_user'); } catch {}
+      // Redirect to appropriate login page depending on current path
+      if (typeof window !== 'undefined') {
+        const isAdminArea = window.location.pathname.startsWith('/admin');
+        const isAdminLoginArea = window.location.pathname.startsWith('/admin-login');
+        const target = isAdminArea || isAdminLoginArea ? '/admin-login' : '/login';
+        if (window.location.pathname !== target) {
+          window.location.href = target;
+        }
+      }
+    }
     const text = await res.text();
     throw new Error(text || `HTTP ${res.status}`);
   }
@@ -77,6 +116,70 @@ export const AuthApi = {
       body: JSON.stringify(data),
     }),
   me: () => api<any>('/users/me'),
+  
+  // Account settings
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  changeEmailRequest: (data: { newEmail: string; currentPassword: string }) =>
+    api<{ message: string; verificationCode?: string }>('/auth/change-email-request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  changeEmailVerify: (data: { newEmail: string; verificationCode: string }) =>
+    api<{ message: string }>('/auth/change-email-verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  changeEmailResend: (data: { newEmail: string }) =>
+    api<{ message: string; verificationCode?: string }>('/auth/change-email-resend', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteAccountRequest: (data: { email: string; password: string }) =>
+    api<{ message: string; verificationCode?: string }>('/auth/delete-account-request', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteAccountVerify: (data: { email: string; verificationCode: string }) =>
+    api<{ message: string }>('/auth/delete-account-verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteAccountResend: (data: { email: string }) =>
+    api<{ message: string; verificationCode?: string }>('/auth/delete-account-resend', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  // Forgot password
+  forgotPasswordRequest: (data: { email: string }) =>
+    apiPublic<{ message: string; verificationCode?: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  resetPassword: (data: { email: string; verificationCode: string; password: string }) =>
+    apiPublic<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  // Notifications
+  getNotifications: () => api<{ notifications: any[]; unreadCount: number }>('/notifications'),
+  markNotificationAsRead: (notificationId: string) =>
+    api<{ success: boolean; message: string }>(`/notifications/${notificationId}/read`, {
+      method: 'POST',
+    }),
+  markAllNotificationsAsRead: () =>
+    api<{ success: boolean; message: string }>('/notifications/mark-all-read', {
+      method: 'POST',
+    }),
+  sendTestNotification: () =>
+    api<{ success: boolean; notification: any }>('/notifications/test', {
+      method: 'POST',
+    }),
 };
 
 export const CatalogApi = {
@@ -168,6 +271,12 @@ export const UsersApi = {
   getProfile: () => api<any>('/users/me'),
   updateProfile: (data: any) => api<any>('/users/profile', { method: 'PATCH', body: JSON.stringify(data) }),
   getMyDonations: (query: string = '') => api<any>(`/users/donations${query ? `?${query}` : ''}`),
+  getUserFavorites: (page?: number, limit: number = 100) => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (limit) params.append('limit', String(Math.min(limit, 100)));
+    return api<any>(`/users/favorites${params.toString() ? `?${params.toString()}` : ''}`);
+  },
   
   // Admin methods
   getAll: (query: string = '') => api<any>(`/users${query ? `?${query}` : ''}`),

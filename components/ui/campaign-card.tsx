@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { Campaign } from '@/types';
-import { FiCalendar, FiUsers, FiStar, FiMapPin } from 'react-icons/fi';
+import { FiCalendar, FiUsers, FiStar, FiMapPin, FiHeart } from 'react-icons/fi';
+import { API_BASE } from '@/lib/api';
+import { useEffect, useState } from 'react';
+import { getStoredUser } from '@/lib/auth-client';
 import { formatMoney } from '@/lib/utils';
 
 interface CampaignCardProps {
@@ -8,9 +11,16 @@ interface CampaignCardProps {
 }
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
+  const [isFav, setIsFav] = useState<boolean>(!!campaign.isFavorite);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof campaign.isFavorite === 'boolean') setIsFav(!!campaign.isFavorite);
+  }, [campaign.isFavorite]);
   const currentAmount = typeof campaign.currentAmount === 'string' ? parseFloat(campaign.currentAmount) : campaign.currentAmount || 0;
+  const totalRaised = typeof campaign.totalRaised === 'string' ? parseFloat(campaign.totalRaised) : campaign.totalRaised || currentAmount;
   const targetAmount = typeof campaign.targetAmount === 'string' ? parseFloat(campaign.targetAmount) : campaign.targetAmount || 0;
-  const progressBase = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
+  const progressBase = targetAmount > 0 ? (totalRaised / targetAmount) * 100 : 0;
   const progressPercentage = Math.round(progressBase);
   
   const getStatusBadge = () => {
@@ -43,8 +53,42 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         </div>
         {campaign.isVerified && (
           <div className="absolute top-3 right-3">
-            <div className="bg-blue-500 text-white p-1 rounded-full">
-              <FiStar className="w-4 h-4" />
+            <div className="flex gap-2">
+              <button
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (loading) return;
+                  setLoading(true);
+                  try {
+                    const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+                    const adding = !isFav;
+                    const res = await fetch(`${API_BASE}/campaigns/${campaign.id}/favorite`, {
+                      method: adding ? 'POST' : 'DELETE',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                      credentials: 'include',
+                    });
+                    if (res.status === 401) return; // not logged in
+                    if (res.status === 403 && adding) { setIsFav(true); return; } // already favorite
+                    if (res.status === 404 && !adding) { setIsFav(false); return; } // already removed
+                    if (!res.ok) throw new Error(await res.text());
+                    setIsFav(!isFav);
+                  } catch {
+                    // ignore for card
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className={`${isFav ? 'bg-red-500' : 'bg-white/90 hover:bg-white'} p-1 rounded-full`}
+                aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              >
+                <FiHeart className={`w-4 h-4 ${isFav ? 'text-white fill-white' : 'text-gray-700'}`} />
+              </button>
+              <div className="bg-blue-500 text-white p-1 rounded-full">
+                <FiStar className="w-4 h-4" />
+              </div>
             </div>
           </div>
         )}
@@ -73,7 +117,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">
-              {formatMoney(currentAmount)} collectés
+              {formatMoney(totalRaised)} collectés
             </span>
             <span className="text-sm text-gray-500">
               {progressPercentage}%
@@ -92,6 +136,13 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
               {new Date(campaign.deadline).toLocaleDateString('fr-FR')}
             </span>
           </div>
+          {totalRaised > currentAmount && (
+            <div className="mt-2 text-xs text-gray-500">
+              <span className="text-green-600">Disponible: {formatMoney(currentAmount)}</span>
+              <span className="mx-2">•</span>
+              <span className="text-blue-600">Total collecté: {formatMoney(totalRaised)}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between">

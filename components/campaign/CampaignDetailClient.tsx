@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
 import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiHeart, FiX, FiPlay } from 'react-icons/fi';
-import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi } from '@/lib/api';
+import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/utils';
@@ -29,10 +29,29 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
   const router = useRouter();
   const { toast } = useToast();
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  const [favLoading, setFavLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
     loadPlatformFees();
+    // Initial favorite status: infer from count if available is not reliable; fetch user favorites minimalistically
+    (async () => {
+      try {
+        const token = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('auth_user') || '{}')?.token : null;
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/users/favorites?limit=1000&page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+          const isFav = list.some((fav: any) => (fav?.id === campaign.id) || (fav?.campaignId === campaign.id) || (fav?.campaign?.id === campaign.id));
+          setIsFavorite(isFav);
+        }
+      } catch {}
+    })();
     
     // Vérifier s'il y a un popup en attente dans localStorage
     const keys = Object.keys(localStorage);
@@ -142,13 +161,14 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   };
 
   const currentAmount = typeof campaign.currentAmount === 'string' ? parseFloat(campaign.currentAmount) : campaign.currentAmount || 0;
+  const totalRaised = typeof campaign.totalRaised === 'string' ? parseFloat(campaign.totalRaised) : campaign.totalRaised || currentAmount;
   const targetAmount = typeof campaign.targetAmount === 'string' ? parseFloat(campaign.targetAmount) : campaign.targetAmount || 0;
   const rating = typeof campaign.rating === 'string' ? parseFloat(campaign.rating) : (campaign.rating || 0);
   const deadlineDate = new Date(campaign.deadline);
   const daysLeft = Math.ceil((deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   const isExpired = deadlineDate < new Date();
   const isInactive = campaign.status !== 'active' || isExpired;
-  const progressPercentage = targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0;
+  const progressPercentage = targetAmount > 0 ? Math.min((totalRaised / targetAmount) * 100, 100) : 0;
 
   const otherImages = Array.isArray(campaign.images) ? campaign.images.slice(1) : [];
   const hasVideo = Boolean((campaign as any).video);
@@ -265,6 +285,41 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
     }
   };
 
+  const toggleFavorite = async () => {
+    if (!currentUser) {
+      toast({ title: 'Connexion requise', description: 'Veuillez vous connecter pour ajouter aux favoris.', variant: 'destructive' });
+      return;
+    }
+    setFavLoading(true);
+    try {
+      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+      const method = isFavorite ? 'DELETE' : 'POST';
+      const res = await fetch(`${API_BASE}/campaigns/${campaign.id}/favorite`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (res.status === 403) {
+        const msg = await res.text();
+        toast({ title: 'Action non autorisée', description: msg || 'Vérifiez vos droits sur cette campagne.', variant: 'destructive' });
+        return;
+      }
+      if (res.status === 404) {
+        toast({ title: 'Campagne introuvable', description: 'Cette campagne n’existe plus.', variant: 'destructive' });
+        return;
+      }
+      if (!res.ok) throw new Error(await res.text());
+      setIsFavorite(!isFavorite);
+      toast({ title: isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris' });
+      if (onRefetch) onRefetch();
+    } catch (e) {
+      console.error('Favorite toggle failed', e);
+      toast({ title: 'Erreur favoris', description: 'Réessayez plus tard.', variant: 'destructive' });
+    } finally {
+      setFavLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -284,8 +339,8 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   </span>
                 </div>
                 <div className="absolute top-4 right-4 flex space-x-2">
-                  <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
-                  <FiHeart className="w-4 h-4 text-gray-700" />
+                  <button onClick={toggleFavorite} disabled={favLoading} className={`${isFavorite ? 'bg-red-500' : 'bg-white/90 hover:bg-white'} p-2 rounded-full transition-colors`}>
+                    <FiHeart className={`w-4 h-4 ${isFavorite ? 'text-white fill-white' : 'text-gray-700'}`} />
                   </button>
                   <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
                     <FiShare2 className="w-5 h-5 text-gray-700" />
@@ -342,9 +397,16 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                     />
                   </div>
                   <div className="flex justify-between text-lg font-semibold mt-3">
-                    <span className="text-orange-600">{formatMoney(currentAmount)}</span>
+                    <span className="text-orange-600">{formatMoney(totalRaised)}</span>
                     <span className="text-gray-600">sur {formatMoney(targetAmount)}</span>
                   </div>
+                  {totalRaised > currentAmount && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      <span className="text-green-600">Disponible: {formatMoney(currentAmount)}</span>
+                      <span className="mx-2">•</span>
+                      <span className="text-blue-600">Total collecté: {formatMoney(totalRaised)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="prose max-w-none">
