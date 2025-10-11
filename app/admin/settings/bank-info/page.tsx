@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FiSave, FiEdit, FiTrash2, FiPlus, FiCreditCard, FiDollarSign } from 'react-icons/fi';
 import { BankApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 interface BankInfo {
   id: string;
@@ -22,6 +23,7 @@ export default function AdminBankInfoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     type: 'mobile_money' as 'mobile_money' | 'bank_account',
     accountNumber: '',
@@ -48,10 +50,50 @@ export default function AdminBankInfoPage() {
   };
 
   const handleSave = async () => {
+    if (!captchaToken) {
+      toast({
+        title: 'Vérification requise',
+        description: 'Veuillez vérifier le reCAPTCHA avant de sauvegarder.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setSaving(true);
       
-      await BankApi.create(formData as any);
+      // Récupérer le token d'authentification
+      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
+        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
+        : '';
+
+      if (!token) {
+        toast({
+          title: 'Erreur',
+          description: 'Vous devez être connecté pour effectuer cette action',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/admin/bank-info/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...formData,
+          token: captchaToken
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la sauvegarde');
+      }
+
       toast({
         title: 'Succès',
         description: 'Information bancaire ajoutée avec succès',
@@ -70,7 +112,7 @@ export default function AdminBankInfoPage() {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
         title: 'Erreur',
-        description: 'Erreur lors de la sauvegarde des informations bancaires',
+        description: error.message || 'Erreur lors de la sauvegarde des informations bancaires',
         variant: 'destructive',
       });
     } finally {
@@ -190,16 +232,16 @@ export default function AdminBankInfoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 sm:p-10">
+    <div className="min-h-screen bg-gray-900 p-6 sm:p-10">
       <h1 className="text-3xl font-bold mb-4">Paramètres Admin</h1>
       <h2 className="text-xl font-semibold mb-6">Informations bancaires (affichées lors des dons)</h2>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="bg-gray-800 rounded-xl shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Ajouter une information</h3>
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Type</label>
               <select
                 value={formData.type}
                 onChange={(e) => {
@@ -211,49 +253,49 @@ export default function AdminBankInfoPage() {
                     accountNumber: '',
                   });
                 }}
-                className="w-full px-4 py-3 border rounded-lg"
+                className="w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg"
               >
-                <option value="mobile_money">Mobile Money</option>
-                <option value="bank_account">Compte bancaire</option>
+                <option value="mobile_money" style={{backgroundColor: '#1f2937', color: 'white'}}>Mobile Money</option>
+                <option value="bank_account" style={{backgroundColor: '#1f2937', color: 'white'}}>Compte bancaire</option>
               </select>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numéro</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Numéro</label>
                 <input
                   value={formData.accountNumber}
                   onChange={(e)=>setFormData({...formData, accountNumber: e.target.value})}
-                  className="w-full px-4 py-3 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg"
                   placeholder={accountNumberPlaceholder}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Titulaire</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Titulaire</label>
                 <input
                   value={formData.accountName}
                   onChange={(e)=>setFormData({...formData, accountName: e.target.value})}
-                  className="w-full px-4 py-3 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg"
                   placeholder="Nom complet"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fournisseur / Banque</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Fournisseur / Banque</label>
               {isMobile ? (
                 <select
                   value={formData.provider}
                   onChange={(e)=>setFormData({...formData, provider: e.target.value})}
-                  className="w-full px-4 py-3 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg"
                 >
-                  <option value="Mvola">Mvola</option>
-                  <option value="Orange Money">Orange Money</option>
-                  <option value="Airtel Money">Airtel Money</option>
+                  <option value="Mvola" style={{backgroundColor: '#1f2937', color: 'white'}}>Mvola</option>
+                  <option value="Orange Money" style={{backgroundColor: '#1f2937', color: 'white'}}>Orange Money</option>
+                  <option value="Airtel Money" style={{backgroundColor: '#1f2937', color: 'white'}}>Airtel Money</option>
                 </select>
               ) : (
                 <input
                   value={formData.provider}
                   onChange={(e)=>setFormData({...formData, provider: e.target.value})}
-                  className="w-full px-4 py-3 border rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg"
                   placeholder="Nom de la banque (ex: BNI, BOA, ... )"
                 />
               )}
@@ -262,30 +304,39 @@ export default function AdminBankInfoPage() {
               <input type="checkbox" checked={formData.isDefault} onChange={(e)=>setFormData({...formData, isDefault: e.target.checked})} />
               <span>Définir par défaut</span>
             </div>
+
+            {/* reCAPTCHA */}
+            <div className="flex justify-center">
+              <ResponsiveReCAPTCHA
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                onChange={(token: string | null) => setCaptchaToken(token)}
+              />
+            </div>
+
             <button disabled={saving} className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg disabled:opacity-50">
               {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
           </form>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="bg-gray-800 rounded-xl shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Vos comptes</h3>
           {bankInfos.length === 0 ? (
-            <div className="text-gray-600">Aucune information enregistrée.</div>
+            <div className="text-gray-200">Aucune information enregistrée.</div>
           ) : (
             <div className="space-y-3">
               {bankInfos.map((b) => (
                 <div key={b.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{b.accountName} • {b.accountNumber}</p>
-                    <p className="text-sm text-gray-600 truncate">{b.type === 'mobile_money' ? b.provider : `Banque: ${b.provider}`}</p>
+                    <p className="font-medium text-white truncate">{b.accountName} • {b.accountNumber}</p>
+                    <p className="text-sm text-gray-200 truncate">{b.type === 'mobile_money' ? b.provider : `Banque: ${b.provider}`}</p>
                     {b.isDefault && <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Par défaut</span>}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     {!b.isDefault && (
-                      <button onClick={()=>handleSetDefault(b.id)} className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200">Définir par défaut</button>
+                      <button onClick={()=>handleSetDefault(b.id)} className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-white text-xs sm:text-sm">Définir par défaut</button>
                     )}
-                    <button onClick={()=>handleDelete(b.id)} className="px-3 py-1.5 rounded bg-red-50 hover:bg-red-100 text-red-700">Supprimer</button>
+                    <button onClick={()=>handleDelete(b.id)} className="px-3 py-1.5 rounded bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm">Supprimer</button>
                   </div>
                 </div>
               ))}

@@ -312,7 +312,7 @@ export default function ChangeEmailForm({ currentEmail, onSuccess }: ChangeEmail
               </AlertDescription>
             </Alert>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button 
                 type="submit" 
                 disabled={isLoading || success} 

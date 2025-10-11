@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <FiAlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur de chargement</h2>
@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

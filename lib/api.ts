@@ -110,7 +110,7 @@ export const AuthApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  register: (data: { firstName: string; lastName: string; email: string; password: string; role?: 'demandeur'|'donateur'|'admin'; phone?: string }) =>
+  register: (data: { firstName: string; lastName: string; email: string; password: string; role?: 'demandeur'|'donateur'|'admin'; phone?: string; token?: string }) =>
     api<{ user: any; token: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -184,8 +184,24 @@ export const AuthApi = {
 
 export const CatalogApi = {
   categories: async () => unwrapList<any>(await api<any>('/categories')),
-  campaigns: async (query: string = '') => unwrapList<any>(await api<any>(`/campaigns${query ? `?${query}` : ''}`)),
-  campaignById: async (id: string) => unwrapObject<any>(await api<any>(`/campaigns/${id}`)),
+  campaigns: async (query: string = '') => {
+    // Utiliser l'endpoint public si pas de token, sinon l'endpoint authentifié
+    const token = getAuthToken();
+    if (token) {
+      return unwrapList<any>(await api<any>(`/campaigns${query ? `?${query}` : ''}`));
+    } else {
+      return unwrapList<any>(await apiPublic<any>(`/public/campaigns${query ? `?${query}` : ''}`));
+    }
+  },
+  campaignById: async (id: string) => {
+    // Utiliser l'endpoint public si pas de token, sinon l'endpoint authentifié
+    const token = getAuthToken();
+    if (token) {
+      return unwrapObject<any>(await api<any>(`/campaigns/${id}`));
+    } else {
+      return unwrapObject<any>(await apiPublic<any>(`/public/campaigns/${id}`));
+    }
+  },
 };
 
 export const CampaignsApi = {

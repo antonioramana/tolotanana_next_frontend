@@ -8,6 +8,7 @@ import { setStoredUser } from '@/lib/auth-client';
 import { AuthApi } from '@/lib/api';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 type Tab = 'login' | 'register' | 'forgot-password' | 'reset-password';
 
@@ -24,6 +25,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [token, setToken] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [form, setForm] = useState({
     firstName: '',
@@ -85,11 +87,33 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) {
+      setError("Veuillez vérifier le reCAPTCHA");
+      return;
+    }
     setIsLoading(true);
     setError('');
     try {
-      const res = await AuthApi.login({ email: form.email, password: form.password });
-      const token = (res as any).token;
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          token: token
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur de connexion');
+      }
+
+      const res = await response.json();
+      const authToken = (res as any).token;
       const user = (res as any).user || {};
       
       // Bloquer les administrateurs - ils doivent utiliser /admin/login
@@ -99,7 +123,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
         return;
       }
       
-      setStoredUser({ ...user, token });
+      setStoredUser({ ...user, token: authToken });
       // Vider les champs avant la redirection
       setForm({
         firstName: '',
@@ -117,7 +141,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       router.push('/dashboard');
       close();
     } catch (err: any) {
-      setError('Email ou mot de passe incorrect');
+      setError(err.message || 'Email ou mot de passe incorrect');
     } finally {
       setIsLoading(false);
     }
@@ -199,6 +223,11 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       setIsLoading(false);
       return;
     }
+    if (!token) {
+      setError('Veuillez compléter la vérification reCAPTCHA');
+      setIsLoading(false);
+      return;
+    }
     try {
       const res = await AuthApi.register({
         firstName: form.firstName,
@@ -207,10 +236,11 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
         password: form.password,
         role: form.role as any,
         phone: form.phone || undefined,
+        token: token,
       });
-      const token = (res as any).token;
+      const authToken = (res as any).token;
       const user = (res as any).user || {};
-      setStoredUser({ ...user, token });
+      setStoredUser({ ...user, token: authToken });
       // Vider les champs avant la redirection
       setForm({
         firstName: '',
@@ -225,6 +255,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
       });
       // Supprimer les données sauvegardées
       localStorage.removeItem('auth_form_data');
+      setToken(null); // Réinitialiser le token captcha
       router.push('/dashboard');
       close();
     } catch (err: any) {
@@ -322,13 +353,17 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
-                <div className="relative">
+                <div className="relative mb-4">
                   <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type={showPassword ? 'text' : 'password'} required value={form.password} onChange={(e)=>setForm({...form, password: e.target.value})} className="pl-10 pr-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Votre mot de passe" />
                   <button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     {showPassword ? <FiEyeOff /> : <FiEye />}
                   </button>
                 </div>
+                <ResponsiveReCAPTCHA
+                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                    onChange={(token: string | null) => setToken(token)}
+                  />
               </div>
               <button type="submit" disabled={isLoading} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50">
                 {isLoading ? 'Connexion...' : 'Se connecter'}
@@ -509,7 +544,16 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                 <input type="checkbox" checked={form.acceptTerms} onChange={(e)=>setForm({...form, acceptTerms: e.target.checked})} className="rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50" />
                 <span className="ml-2 text-sm text-gray-600">J'accepte les conditions d'utilisation</span>
               </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50">
+              
+              {/* Captcha pour l'inscription */}
+              <div className="flex justify-center">
+                <ResponsiveReCAPTCHA
+                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                  onChange={(token: string | null) => setToken(token)}
+                />
+              </div>
+              
+              <button type="submit" disabled={isLoading || !token} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50">
                 {isLoading ? 'Création...' : 'Créer mon compte'}
               </button>
             </form>

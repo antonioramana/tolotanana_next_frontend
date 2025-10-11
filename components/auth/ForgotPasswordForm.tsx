@@ -51,7 +51,7 @@ export default function ForgotPasswordForm({ onBack, onSuccess }: ForgotPassword
 
     setIsLoading(true);
     try {
-      await AuthApi.forgotPasswordRequest({ email });
+      const res = await AuthApi.forgotPasswordRequest({ email });
       
       setSuccess(true);
       setVerificationCode(res.verificationCode || '');

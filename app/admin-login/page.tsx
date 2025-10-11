@@ -7,6 +7,7 @@ import { AuthApi } from '@/lib/api';
 import { setStoredUser } from '@/lib/auth-client';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiShield, FiArrowLeft } from 'react-icons/fi';
 import { useToast } from '@/hooks/use-toast';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export default function AdminLoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -30,14 +32,41 @@ export default function AdminLoginPage() {
       return;
     }
 
+    if (!captchaToken) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez vérifier le reCAPTCHA.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await AuthApi.login(formData);
-      const token = (response as any).token;
-      const user = (response as any).user || {};
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          token: captchaToken
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur de connexion');
+      }
+
+      const result = await response.json();
+      const token = (result as any).token;
+      const user = (result as any).user || {};
       
-      console.log('Réponse de connexion admin:', response);
+      console.log('Réponse de connexion admin:', result);
       console.log('Token:', token);
       console.log('User:', user);
       
@@ -75,12 +104,9 @@ export default function AdminLoginPage() {
       console.error('Erreur de connexion admin:', error);
       let errorMessage = 'Erreur de connexion. Vérifiez vos identifiants.';
       
-      try {
-        const parsed = JSON.parse(error.message);
-        errorMessage = Array.isArray(parsed?.message) 
-          ? parsed.message.join(', ') 
-          : (parsed?.message || errorMessage);
-      } catch {}
+      if (error.message) {
+        errorMessage = error.message;
+      }
       
       toast({
         title: 'Erreur de connexion',
@@ -175,6 +201,13 @@ export default function AdminLoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* reCAPTCHA responsive */}
+            <ResponsiveReCAPTCHA
+              sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+              onChange={(token: string | null) => setCaptchaToken(token)}
+              className="my-6"
+            />
 
             {/* Bouton de connexion */}
             <button

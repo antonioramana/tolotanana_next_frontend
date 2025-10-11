@@ -164,8 +164,8 @@ export default function PlatformFeesPage() {
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Frais de Plateforme</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-white">Frais de Plateforme</h1>
+          <p className="text-gray-200 mt-2">
             Gérez les frais de plateforme appliqués aux donations
           </p>
         </div>
@@ -184,11 +184,11 @@ export default function PlatformFeesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="percentage" className="text-right">
+              <div className="space-y-2">
+                <Label htmlFor="percentage">
                   Pourcentage
                 </Label>
-                <div className="col-span-3 relative">
+                <div className="relative">
                   <Input
                     id="percentage"
                     type="number"
@@ -199,18 +199,17 @@ export default function PlatformFeesPage() {
                     onChange={(e) => setFormData({ ...formData, percentage: parseFloat(e.target.value) || 0 })}
                     className="pr-8"
                   />
-                  <FiPercent className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <FiPercent className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 h-4 w-4" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">
+              <div className="space-y-2">
+                <Label htmlFor="description">
                   Description
                 </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="col-span-3"
                   placeholder="Description optionnelle des frais..."
                 />
               </div>
@@ -294,7 +293,7 @@ export default function PlatformFeesPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-4 text-sm text-gray-200">
                 <div className="flex items-center gap-1">
                   <FiUser className="h-4 w-4" />
                   {feesItem.creator.firstName} {feesItem.creator.lastName}
@@ -311,9 +310,9 @@ export default function PlatformFeesPage() {
         {fees.length === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <FiPercent className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun frais configuré</h3>
-              <p className="text-gray-600 text-center mb-4">
+              <FiPercent className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">Aucun frais configuré</h3>
+              <p className="text-gray-200 text-center mb-4">
                 Créez votre premier pourcentage de frais de plateforme
               </p>
               <Button onClick={() => setIsCreateModalOpen(true)}>
@@ -335,11 +334,11 @@ export default function PlatformFeesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-percentage" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="edit-percentage">
                 Pourcentage
               </Label>
-              <div className="col-span-3 relative">
+              <div className="relative">
                 <Input
                   id="edit-percentage"
                   type="number"
@@ -350,18 +349,17 @@ export default function PlatformFeesPage() {
                   onChange={(e) => setFormData({ ...formData, percentage: parseFloat(e.target.value) || 0 })}
                   className="pr-8"
                 />
-                <FiPercent className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <FiPercent className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 h-4 w-4" />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">
                 Description
               </Label>
               <Textarea
                 id="edit-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="col-span-3"
                 placeholder="Description optionnelle des frais..."
               />
             </div>

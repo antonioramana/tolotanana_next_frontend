@@ -1,22 +1,29 @@
 import Link from 'next/link';
 import { Campaign } from '@/types';
-import { FiCalendar, FiUsers, FiStar, FiMapPin, FiHeart } from 'react-icons/fi';
-import { API_BASE } from '@/lib/api';
-import { useEffect, useState } from 'react';
-import { getStoredUser } from '@/lib/auth-client';
+import { FiCalendar, FiUsers, FiStar, FiMapPin } from 'react-icons/fi';
 import { formatMoney } from '@/lib/utils';
+import FavoriteToggle from '@/components/campaign/FavoriteToggle';
+import FavoriteButton from '@/components/campaign/FavoriteButton';
+import { useFavorites } from '@/hooks/useFavorites';
+import { getStoredUser } from '@/lib/auth-client';
+import { useEffect, useState } from 'react';
 
 interface CampaignCardProps {
   campaign: Campaign | any;
 }
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
-  const [isFav, setIsFav] = useState<boolean>(!!campaign.isFavorite);
-  const [loading, setLoading] = useState(false);
-
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
   useEffect(() => {
-    if (typeof campaign.isFavorite === 'boolean') setIsFav(!!campaign.isFavorite);
-  }, [campaign.isFavorite]);
+    setCurrentUser(getStoredUser());
+  }, []);
+
+  // Utiliser le hook useFavorites seulement si l'utilisateur est connecté
+  const favorites = useFavorites({
+    campaignId: campaign.id,
+    initialIsFavoris: campaign.isFavoris || false
+  });
   const currentAmount = typeof campaign.currentAmount === 'string' ? parseFloat(campaign.currentAmount) : campaign.currentAmount || 0;
   const totalRaised = typeof campaign.totalRaised === 'string' ? parseFloat(campaign.totalRaised) : campaign.totalRaised || currentAmount;
   const targetAmount = typeof campaign.targetAmount === 'string' ? parseFloat(campaign.targetAmount) : campaign.targetAmount || 0;
@@ -51,47 +58,24 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="absolute top-3 left-3">
           {getStatusBadge()}
         </div>
-        {campaign.isVerified && (
-          <div className="absolute top-3 right-3">
-            <div className="flex gap-2">
-              <button
-                onClick={async (e) => {
-                  e.preventDefault();
-                  if (loading) return;
-                  setLoading(true);
-                  try {
-                    const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
-                    const adding = !isFav;
-                    const res = await fetch(`${API_BASE}/campaigns/${campaign.id}/favorite`, {
-                      method: adding ? 'POST' : 'DELETE',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                      credentials: 'include',
-                    });
-                    if (res.status === 401) return; // not logged in
-                    if (res.status === 403 && adding) { setIsFav(true); return; } // already favorite
-                    if (res.status === 404 && !adding) { setIsFav(false); return; } // already removed
-                    if (!res.ok) throw new Error(await res.text());
-                    setIsFav(!isFav);
-                  } catch {
-                    // ignore for card
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                className={`${isFav ? 'bg-red-500' : 'bg-white/90 hover:bg-white'} p-1 rounded-full`}
-                aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              >
-                <FiHeart className={`w-4 h-4 ${isFav ? 'text-white fill-white' : 'text-gray-700'}`} />
-              </button>
+        <div className="absolute top-3 right-3">
+          <div className="flex gap-2">
+            {currentUser && (
+              <FavoriteToggle
+                isFavoris={favorites.isFavoris}
+                onToggle={favorites.toggleFavorite}
+                isLoading={favorites.isLoading}
+                size="sm"
+                className="shadow-lg"
+              />
+            )}
+            {campaign.isVerified && (
               <div className="bg-blue-500 text-white p-1 rounded-full">
                 <FiStar className="w-4 h-4" />
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="p-6">
@@ -154,12 +138,21 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             />
             <span className="text-sm text-gray-600">{campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</span>
           </div>
-          <Link
-            href={`/campaigns/${campaign.id}`}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            Voir plus
-          </Link>
+          <div className="flex items-center space-x-2">
+            {currentUser && (
+              <FavoriteButton
+                campaignId={campaign.id}
+                initialIsFavoris={campaign.isFavoris || false}
+                variant="card"
+              />
+            )}
+            <Link
+              href={`/campaigns/${campaign.id}`}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Voir plus
+            </Link>
+          </div>
         </div>
       </div>
     </div>

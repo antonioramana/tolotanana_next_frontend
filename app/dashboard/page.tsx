@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
           <p className="text-gray-500 mt-2">Chargement du tableau de bord...</p>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div>
         <div className="text-center py-12">
           <p className="text-red-500 mb-4">{error}</p>
           <button 
@@ -179,7 +179,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>

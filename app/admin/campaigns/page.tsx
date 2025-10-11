@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FiEye, FiCheck, FiX, FiPause, FiPlay, FiFlag, FiSearch } from 'react-icons/fi';
+import { FiEye, FiCheck, FiX, FiPause, FiPlay, FiFlag, FiSearch, FiLoader } from 'react-icons/fi';
 import SimplePagination from '@/components/ui/simple-pagination';
 import { CampaignsApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -13,6 +14,10 @@ export default function AdminCampaignsPage() {
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // États pour le chargement des actions
+  const [updatingCampaigns, setUpdatingCampaigns] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadCampaigns();
@@ -28,7 +33,20 @@ export default function AdminCampaignsPage() {
       params.append('page', String(page));
       params.append('limit', '50');
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-      const res = await fetch(`${apiBase}/campaigns?${params.toString()}`, { cache: 'no-store' });
+      
+      // Récupérer le token d'authentification
+      const authUser = localStorage.getItem('auth_user');
+      const token = authUser ? JSON.parse(authUser).token : null;
+      
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
+      const res = await fetch(`${apiBase}/campaigns?${params.toString()}`, { 
+        cache: 'no-store',
+        headers
+      });
       const data = await res.json();
       const items = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
       setCampaigns(items);
@@ -56,6 +74,7 @@ export default function AdminCampaignsPage() {
     }
   };
 
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'Active';
@@ -77,22 +96,75 @@ export default function AdminCampaignsPage() {
 
   const handleAction = async (action: string, campaignId: string, newStatus?: string) => {
     try {
+      // Ajouter la campagne à la liste des campagnes en cours de mise à jour
+      setUpdatingCampaigns(prev => new Set(prev).add(campaignId));
+      
       if (action === 'change_status' && newStatus) {
-        await CampaignsApi.updateAdminStatus(campaignId, newStatus);
-        alert(`Statut changé vers: ${getStatusText(newStatus)}`);
+        // Récupérer le token d'authentification
+        const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
+          ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
+          : '';
+
+        // Appeler l'API backend pour changer le statut (endpoint admin)
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
+        const response = await fetch(`${apiBase}/campaigns/${campaignId}/admin-status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Erreur lors du changement de statut');
+        }
+
+        toast({
+          title: 'Succès',
+          description: `Statut de la campagne modifié en "${getStatusText(newStatus)}"`,
+        });
       } else if (action === 'approve') {
         await CampaignsApi.updateAdminStatus(campaignId, 'active');
+        toast({
+          title: 'Succès',
+          description: 'Campagne approuvée avec succès',
+        });
       } else if (action === 'reject') {
         await CampaignsApi.updateAdminStatus(campaignId, 'cancelled');
+        toast({
+          title: 'Succès',
+          description: 'Campagne rejetée avec succès',
+        });
       } else if (action === 'pause') {
         await CampaignsApi.updateAdminStatus(campaignId, 'paused');
+        toast({
+          title: 'Succès',
+          description: 'Campagne mise en pause',
+        });
       } else if (action === 'resume') {
         await CampaignsApi.updateAdminStatus(campaignId, 'active');
+        toast({
+          title: 'Succès',
+          description: 'Campagne reprise',
+        });
       }
+      
       await loadCampaigns();
-    } catch (e) {
-      console.error('Action failed:', e);
-      alert("Action échouée");
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Erreur lors de l\'action',
+        variant: 'destructive',
+      });
+    } finally {
+      // Retirer la campagne de la liste des campagnes en cours de mise à jour
+      setUpdatingCampaigns(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(campaignId);
+        return newSet;
+      });
     }
   };
 
@@ -120,20 +192,20 @@ export default function AdminCampaignsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des campagnes</h1>
-        <p className="text-gray-600">Modérez et gérez toutes les campagnes de la plateforme</p>
+        <h1 className="text-3xl font-bold text-white mb-2">Gestion des campagnes</h1>
+        <p className="text-gray-200">Modérez et gérez toutes les campagnes de la plateforme</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total campagnes</p>
-              <p className="text-2xl font-bold text-gray-900">{campaigns.length}</p>
+              <p className="text-sm font-medium text-gray-200">Total campagnes</p>
+              <p className="text-2xl font-bold text-white">{campaigns.length}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
               <FiFlag className="w-6 h-6 text-blue-600" />
@@ -141,11 +213,11 @@ export default function AdminCampaignsPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">En attente</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-200">En attente</p>
+              <p className="text-2xl font-bold text-white">
                 {campaigns.filter(c => c.status === 'draft').length}
               </p>
             </div>
@@ -155,11 +227,11 @@ export default function AdminCampaignsPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Actives</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-200">Actives</p>
+              <p className="text-2xl font-bold text-white">
                 {campaigns.filter(c => c.status === 'active').length}
               </p>
             </div>
@@ -169,11 +241,11 @@ export default function AdminCampaignsPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Terminées</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm font-medium text-gray-200">Terminées</p>
+              <p className="text-2xl font-bold text-white">
                 {campaigns.filter(c => c.status === 'completed').length}
               </p>
             </div>
@@ -185,16 +257,16 @@ export default function AdminCampaignsPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-gray-800 rounded-xl shadow-lg p-6">
         <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
           <div className="relative w-full lg:w-1/2 xl:w-3/5">
-             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300" />
              <input
                type="text"
                placeholder="Rechercher une campagne..."
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+               className="pl-10 w-full px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-800 text-white border-gray-600 bg-gray-800 text-white border-gray-600"
              />
            </div>
 
@@ -202,19 +274,19 @@ export default function AdminCampaignsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full sm:w-auto px-4 py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-800 text-white border-gray-600 bg-gray-800 text-white border-gray-600"
             >
-              <option value="">Tous les statuts</option>
-              <option value="draft">Brouillon</option>
-              <option value="active">Active</option>
-              <option value="paused">En pause</option>
-              <option value="completed">Terminée</option>
-              <option value="cancelled">Annulée</option>
+              <option value="" style={{backgroundColor: '#1f2937', color: 'white'}}>Tous les statuts</option>
+              <option value="draft" style={{backgroundColor: '#1f2937', color: 'white'}}>Brouillon</option>
+              <option value="active" style={{backgroundColor: '#1f2937', color: 'white'}}>Active</option>
+              <option value="paused" style={{backgroundColor: '#1f2937', color: 'white'}}>En pause</option>
+              <option value="completed" style={{backgroundColor: '#1f2937', color: 'white'}}>Terminée</option>
+              <option value="cancelled" style={{backgroundColor: '#1f2937', color: 'white'}}>Annulée</option>
             </select>
 
             {selectedCampaigns.length > 0 && (
               <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-200">
                   {selectedCampaigns.length} sélectionnée(s)
                 </span>
                 <button
@@ -236,10 +308,10 @@ export default function AdminCampaignsPage() {
       </div>
 
       {/* Campaigns Table */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px' }}>
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-900">
               <tr>
                 <th className="px-6 py-3 text-left">
                   <input
@@ -249,32 +321,32 @@ export default function AdminCampaignsPage() {
                     className="rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '300px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '300px' }}>
                   Campagne
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '150px' }}>
                   Créateur
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '140px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '140px' }}>
                   Progression
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '100px' }}>
                   Donateurs
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px' }}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '120px' }}>
                   Date création
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px' }}>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ minWidth: '150px' }}>
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-gray-800 divide-y divide-gray-200">
               {filteredCampaigns.map((campaign) => (
-                <tr key={campaign.id} className="hover:bg-gray-50">
+                <tr key={campaign.id} className="hover:bg-gray-900">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
@@ -291,15 +363,15 @@ export default function AdminCampaignsPage() {
                         className="w-12 h-12 rounded-lg object-cover mr-4"
                       />
                       <div className="min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate">
+                        <div className="text-sm font-medium text-white truncate">
                           {campaign.title}
                         </div>
-                        <div className="text-sm text-gray-500 truncate">{campaign.category?.name || campaign.category || '—'}</div>
+                        <div className="text-sm text-gray-300 truncate">{campaign.category?.name || campaign.category || '—'}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{`${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</div>
+                    <div className="text-sm font-medium text-white">{`${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(campaign.status)}`}>
@@ -307,10 +379,10 @@ export default function AdminCampaignsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-white">
                       {formatAmount(campaign.totalRaised || campaign.currentAmount)}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-300">
                       sur {formatAmount(campaign.targetAmount)}
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
@@ -324,7 +396,7 @@ export default function AdminCampaignsPage() {
                         }}
                       />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-300 mt-1">
                       {Math.round(((campaign.totalRaised || campaign.currentAmount) / campaign.targetAmount) * 100)}%
                     </div>
                     {campaign.totalRaised > campaign.currentAmount && (
@@ -333,10 +405,10 @@ export default function AdminCampaignsPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {campaign._count?.donations || 0}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {new Date(campaign.createdAt).toLocaleDateString('fr-FR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -350,18 +422,26 @@ export default function AdminCampaignsPage() {
                       </button>
                       
                       {/* Sélecteur de statut */}
-                      <select
-                        value={campaign.status}
-                        onChange={(e) => handleAction('change_status', campaign.id, e.target.value)}
-                        className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        title="Changer le statut"
-                      >
-                        <option value="draft">Brouillon</option>
-                        <option value="active">Active</option>
-                        <option value="paused">En pause</option>
-                        <option value="completed">Terminée</option>
-                        <option value="cancelled">Annulée</option>
-                      </select>
+                      {updatingCampaigns.has(campaign.id) ? (
+                        <div className="flex items-center space-x-2">
+                          <FiLoader className="w-4 h-4 animate-spin text-orange-500" />
+                          <span className="text-xs text-gray-300">Mise à jour...</span>
+                        </div>
+                      ) : (
+                        <select
+                          value={campaign.status}
+                          onChange={(e) => handleAction('change_status', campaign.id, e.target.value)}
+                          className="text-xs border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded px-2 py-1 bg-gray-800 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-800 text-white border-gray-600 bg-gray-800 text-white border-gray-600 disabled:opacity-50"
+                          title="Changer le statut"
+                          disabled={updatingCampaigns.has(campaign.id)}
+                        >
+                          <option value="draft" style={{backgroundColor: '#1f2937', color: 'white'}}>Brouillon</option>
+                          <option value="active" style={{backgroundColor: '#1f2937', color: 'white'}}>Active</option>
+                          <option value="paused" style={{backgroundColor: '#1f2937', color: 'white'}}>En pause</option>
+                          <option value="completed" style={{backgroundColor: '#1f2937', color: 'white'}}>Terminée</option>
+                          <option value="cancelled" style={{backgroundColor: '#1f2937', color: 'white'}}>Annulée</option>
+                        </select>
+                      )}
                       
                     </div>
                   </td>

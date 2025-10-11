@@ -129,16 +129,16 @@ export default function DashboardSettingsPage() {
       <h1 className="text-3xl font-bold mb-6">Paramètres</h1>
       
       <Tabs defaultValue="bank" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="bank">Informations bancaires</TabsTrigger>
-          <TabsTrigger value="password">Mot de passe</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="account">Compte</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsTrigger value="bank" className="text-xs sm:text-sm">Informations bancaires</TabsTrigger>
+          <TabsTrigger value="password" className="text-xs sm:text-sm">Mot de passe</TabsTrigger>
+          <TabsTrigger value="email" className="text-xs sm:text-sm">Email</TabsTrigger>
+          <TabsTrigger value="account" className="text-xs sm:text-sm">Compte</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bank" className="space-y-6">
-          <h2 className="text-xl font-semibold">Informations bancaires</h2>
-          <div className="grid lg:grid-cols-2 gap-8">
+          <h2 className="text-xl font-semibold my-8">Informations bancaires</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             <div className="bg-white rounded-xl shadow p-6">
               <h3 className="text-lg font-semibold mb-4">Ajouter une information</h3>
               <form onSubmit={submit} className="space-y-4">
@@ -231,11 +231,11 @@ export default function DashboardSettingsPage() {
                         <p className="text-sm text-gray-600 truncate">{b.type === 'mobile_money' ? b.provider : `Banque: ${b.provider}`}</p>
                         {b.isDefault && <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Par défaut</span>}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         {!b.isDefault && (
-                          <button onClick={()=>onSetDefault(b.id)} className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200">Définir par défaut</button>
+                          <button onClick={()=>onSetDefault(b.id)} className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-xs sm:text-sm">Définir par défaut</button>
                         )}
-                        <button onClick={()=>onDelete(b.id)} className="px-3 py-1.5 rounded bg-red-50 hover:bg-red-100 text-red-700">Supprimer</button>
+                        <button onClick={()=>onDelete(b.id)} className="px-3 py-1.5 rounded bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm">Supprimer</button>
                       </div>
                     </div>
                   ))}
@@ -246,17 +246,17 @@ export default function DashboardSettingsPage() {
         </TabsContent>
 
         <TabsContent value="password" className="space-y-6">
-          <h2 className="text-xl font-semibold">Changer le mot de passe</h2>
+          <h2 className="text-xl font-semibold my-8">Changer le mot de passe</h2>
           <ChangePasswordForm onSuccess={() => load()} />
         </TabsContent>
 
         <TabsContent value="email" className="space-y-6">
-          <h2 className="text-xl font-semibold">Changer l'adresse email</h2>
+          <h2 className="text-xl font-semibold my-8">Changer l'adresse email</h2>
           {user && <ChangeEmailForm currentEmail={user.email} onSuccess={() => load()} />}
         </TabsContent>
 
         <TabsContent value="account" className="space-y-6">
-          <h2 className="text-xl font-semibold">Supprimer le compte</h2>
+          <h2 className="text-xl font-semibold my-8">Supprimer le compte</h2>
           {user && <DeleteAccountForm currentEmail={user.email} />}
         </TabsContent>
       </Tabs>

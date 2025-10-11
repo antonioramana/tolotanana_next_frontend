@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FiMail, FiUser, FiMessageSquare, FiSend, FiPhone, FiMapPin, FiClock } from 'react-icons/fi';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ export default function ContactPage() {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,14 +34,40 @@ export default function ContactPage() {
       return;
     }
 
+    if (!captchaToken) {
+      toast({
+        title: 'Vérification requise',
+        description: 'Veuillez vérifier le reCAPTCHA avant d\'envoyer le message.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const response = await PublicContactApi.send(formData);
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/contact/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          token: captchaToken
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de l\'envoi du message');
+      }
+
+      const result = await response.json();
       
       toast({
         title: 'Message envoyé !',
-        description: response.message,
+        description: result.message,
       });
 
       // Réinitialiser le formulaire
@@ -217,6 +245,14 @@ export default function ContactPage() {
                         placeholder="Décrivez votre demande en détail..."
                         rows={6}
                         required
+                      />
+                    </div>
+
+                    {/* reCAPTCHA */}
+                    <div className="flex justify-center">
+                      <ResponsiveReCAPTCHA
+                        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                        onChange={(token: string | null) => setCaptchaToken(token)}
                       />
                     </div>
 

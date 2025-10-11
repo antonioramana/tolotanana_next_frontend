@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiUpload, FiX, FiCalendar, FiDollarSign, FiFileText, FiImage } from 'react-icons/fi';
 import { BankApi, UploadApi, CatalogApi } from '@/lib/api';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function CreateCampaignPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function CreateCampaignPage() {
 
   const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const steps = [
     { id: 1, title: 'Informations de base', icon: FiFileText },
@@ -141,6 +143,11 @@ export default function CreateCampaignPage() {
       return;
     }
 
+    if (!captchaToken) {
+      alert('Veuillez vérifier le reCAPTCHA avant de créer la campagne.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     // Build payload for backend DTO
@@ -155,7 +162,6 @@ export default function CreateCampaignPage() {
     } as any;
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
       const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
         ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
         : '';
@@ -167,13 +173,17 @@ export default function CreateCampaignPage() {
         console.log(`  [${index}] "${url}" - starts with http: ${url.startsWith('http:')}, starts with https: ${url.startsWith('https:')}`);
       });
 
-      const res = await fetch(`${apiBase}/campaigns`, {
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const res = await fetch('/api/campaigns/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          token: captchaToken
+        }),
       });
 
       const rawText = await res.text();
@@ -198,14 +208,15 @@ export default function CreateCampaignPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Créer une nouvelle campagne</h1>
         <p className="text-gray-600">Partagez votre histoire et collectez des fonds pour votre cause</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+        {/* Desktop: Layout horizontal */}
+        <div className="hidden md:flex items-center justify-between">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
               <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
@@ -233,9 +244,32 @@ export default function CreateCampaignPage() {
             </div>
           ))}
         </div>
+
+        {/* Mobile: Layout vertical */}
+        <div className="md:hidden space-y-4">
+          {steps.map((step, index) => (
+            <div key={step.id} className="flex items-center">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                currentStep >= step.id ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                <step.icon className="w-4 h-4" />
+              </div>
+              <div className="ml-3 flex-1">
+                <p className={`text-sm font-medium ${
+                  currentStep >= step.id ? 'text-orange-600' : 'text-gray-500'
+                }`}>
+                  Étape {step.id}: {step.title}
+                </p>
+                {currentStep === step.id && (
+                  <p className="text-xs text-gray-600 mt-1">Étape actuelle</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-8">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
         {currentStep === 1 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Informations de base</h2>
@@ -332,24 +366,34 @@ export default function CreateCampaignPage() {
               </div>
             ) : (
               <div className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">{defaultBank.accountName} • {defaultBank.accountNumber}</p>
-                    <p className="text-sm text-gray-600">{defaultBank.type === 'mobile_money' ? defaultBank.provider : `Banque: ${defaultBank.provider}`}</p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{defaultBank.accountName} • {defaultBank.accountNumber}</p>
+                    <p className="text-sm text-gray-600 truncate">{defaultBank.type === 'mobile_money' ? defaultBank.provider : `Banque: ${defaultBank.provider}`}</p>
                   </div>
-                  <Link href="/dashboard/settings" className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200">Modifier</Link>
+                  <Link href="/dashboard/settings" className="px-3 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-sm whitespace-nowrap">Modifier</Link>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        <div className="flex justify-between pt-8 border-t border-gray-200">
-          <button onClick={handlePrevious} disabled={currentStep === 1} className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Précédent</button>
+        {/* reCAPTCHA - affiché seulement à l'étape 3 */}
+        {currentStep === 3 && (
+          <div className="flex justify-center pt-6">
+            <ResponsiveReCAPTCHA
+              sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+              onChange={(token: string | null) => setCaptchaToken(token)}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-gray-200">
+          <button onClick={handlePrevious} disabled={currentStep === 1} className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Précédent</button>
           {currentStep < 3 ? (
-            <button onClick={handleNext} className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg">Suivant</button>
+            <button onClick={handleNext} className="w-full sm:w-auto px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg">Suivant</button>
           ) : (
-            <button onClick={handleSubmit} disabled={isSubmitting || !defaultBank} className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={handleSubmit} disabled={isSubmitting || !defaultBank} className="w-full sm:w-auto px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
               {isSubmitting ? 'Création...' : 'Créer la campagne'}
             </button>
           )}

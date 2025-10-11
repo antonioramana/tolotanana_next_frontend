@@ -142,7 +142,7 @@ export default function AdminContactPage() {
           right: '20px',
           padding: '12px 20px',
           borderRadius: '6px',
-          color: 'white',
+          color: '#ffffff',
           backgroundColor: notification.type === 'success' ? '#10b981' : '#ef4444',
           zIndex: 1000,
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
@@ -152,11 +152,11 @@ export default function AdminContactPage() {
       )}
 
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#111827', marginBottom: '0.5rem' }}>
+      <div style={{ marginBottom: '2rem' , color: '#d1d5db'}}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#d1d5db'}}>
           Messages de Contact
         </h1>
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: '#d1d5db' }}>
           Gérez les messages reçus via le formulaire de contact
         </p>
       </div>
@@ -167,88 +167,88 @@ export default function AdminContactPage() {
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
         gap: '1rem', 
         marginBottom: '2rem' 
-      }}>
+      , color: '#d1d5db'}}>
         <div style={{ 
-          backgroundColor: 'white', 
+          backgroundColor: '#1f2937', 
           padding: '1.5rem', 
           borderRadius: '8px', 
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #374151'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{ 
               padding: '12px', 
-              backgroundColor: '#dbeafe', 
+              backgroundColor: '#1e40af', 
               borderRadius: '8px', 
               marginRight: '1rem' 
             }}>
               📥
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffffff', margin: 0}}>
                 {stats.total}
               </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Total</p>
+              <p style={{ color: '#ffffff', fontSize: '0.875rem', margin: 0}}>Total</p>
             </div>
           </div>
         </div>
 
         <div style={{ 
-          backgroundColor: 'white', 
+          backgroundColor: '#1f2937', 
           padding: '1.5rem', 
           borderRadius: '8px', 
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #374151'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{ 
               padding: '12px', 
-              backgroundColor: '#fee2e2', 
+              backgroundColor: '#dc2626', 
               borderRadius: '8px', 
               marginRight: '1rem' 
             }}>
               ✉️
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffffff', margin: 0}}>
                 {stats.unread}
               </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Non lus</p>
+              <p style={{ color: '#ffffff', fontSize: '0.875rem', margin: 0}}>Non lus</p>
             </div>
           </div>
         </div>
 
         <div style={{ 
-          backgroundColor: 'white', 
+          backgroundColor: '#1f2937', 
           padding: '1.5rem', 
           borderRadius: '8px', 
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #374151'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{ 
               padding: '12px', 
-              backgroundColor: '#dcfce7', 
+              backgroundColor: '#16a34a', 
               borderRadius: '8px', 
               marginRight: '1rem' 
             }}>
               ✅
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffffff', margin: 0}}>
                 {stats.replied}
               </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Répondus</p>
+              <p style={{ color: '#ffffff', fontSize: '0.875rem', margin: 0}}>Répondus</p>
             </div>
           </div>
         </div>
 
         <div style={{ 
-          backgroundColor: 'white', 
+          backgroundColor: '#1f2937', 
           padding: '1.5rem', 
           borderRadius: '8px', 
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #374151'
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{ 
@@ -260,10 +260,10 @@ export default function AdminContactPage() {
               ⏳
             </div>
             <div>
-              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111827', margin: 0 }}>
+              <p style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ffffff', margin: 0}}>
                 {stats.pending}
               </p>
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>En attente</p>
+              <p style={{ color: '#ffffff', fontSize: '0.875rem', margin: 0}}>En attente</p>
             </div>
           </div>
         </div>
@@ -275,8 +275,8 @@ export default function AdminContactPage() {
         alignItems: 'center', 
         gap: '1rem', 
         marginBottom: '1.5rem' 
-      }}>
-        <span style={{ color: '#374151', fontWeight: '500' }}>Filtrer par :</span>
+      , color: '#d1d5db'}}>
+        <span style={{ color: '#f3f4f6', fontWeight: '500' }}>Filtrer par :</span>
         <select 
           value={filter} 
           onChange={(e) => setFilter(e.target.value as 'all' | 'unread' | 'replied')}
@@ -284,14 +284,14 @@ export default function AdminContactPage() {
             padding: '8px 12px',
             border: '1px solid #d1d5db',
             borderRadius: '6px',
-            backgroundColor: 'white',
-            color: '#374151',
+            backgroundColor: '#1f2937',
+            color: 'white',
             fontSize: '0.875rem'
           }}
         >
-          <option value="all">Tous les messages</option>
-          <option value="unread">Non lus</option>
-          <option value="replied">Répondus</option>
+          <option value="all" style={{backgroundColor: '#1f2937', color: '#ffffff'}}>Tous les messages</option>
+          <option value="unread" style={{backgroundColor: '#1f2937', color: '#ffffff'}}>Non lus</option>
+          <option value="replied" style={{backgroundColor: '#1f2937', color: '#ffffff'}}>Répondus</option>
         </select>
       </div>
 
@@ -305,19 +305,19 @@ export default function AdminContactPage() {
               borderRadius: '8px',
               padding: '1.5rem',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              backgroundColor: !message.isRead ? '#eff6ff' : 'white'
+              backgroundColor: !message.isRead ? '#eff6ff' : 'gray-700'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' , color: '#d1d5db'}}>
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', margin: 0 }}>
+                <div style={{ display: 'flex',  alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' , color: '#d1d5db'}}>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, color: 'white'}}>
                     {message.subject}
                   </h3>
                   {!message.isRead && (
                     <span style={{
                       backgroundColor: '#ef4444',
-                      color: 'white',
+                      color: '#ffffff',
                       padding: '2px 8px',
                       borderRadius: '12px',
                       fontSize: '0.75rem',
@@ -329,7 +329,7 @@ export default function AdminContactPage() {
                   {message.isReplied && (
                     <span style={{
                       backgroundColor: '#10b981',
-                      color: 'white',
+                      color: '#ffffff',
                       padding: '2px 8px',
                       borderRadius: '12px',
                       fontSize: '0.75rem',
@@ -343,7 +343,7 @@ export default function AdminContactPage() {
                   display: 'flex', 
                   gap: '1rem', 
                   fontSize: '0.875rem', 
-                  color: '#6b7280',
+                  color: '#d1d5db',
                   flexWrap: 'wrap'
                 }}>
                   <span>👤 {message.name}</span>
@@ -359,8 +359,8 @@ export default function AdminContactPage() {
                       padding: '6px 12px',
                       border: '1px solid #d1d5db',
                       borderRadius: '6px',
-                      backgroundColor: 'white',
-                      color: '#374151',
+                      backgroundColor: '#1f2937',
+                      color: '#f3f4f6',
                       fontSize: '0.875rem',
                       cursor: 'pointer'
                     }}
@@ -374,8 +374,8 @@ export default function AdminContactPage() {
                     padding: '6px 12px',
                     border: '1px solid #d1d5db',
                     borderRadius: '6px',
-                    backgroundColor: 'white',
-                    color: '#374151',
+                    backgroundColor: '#1f2937',
+                    color: '#f3f4f6',
                     fontSize: '0.875rem',
                     cursor: 'pointer'
                   }}
@@ -388,7 +388,7 @@ export default function AdminContactPage() {
                     padding: '6px 12px',
                     border: '1px solid #dc2626',
                     borderRadius: '6px',
-                    backgroundColor: 'white',
+                    backgroundColor: '#1f2937',
                     color: '#dc2626',
                     fontSize: '0.875rem',
                     cursor: 'pointer'
@@ -400,12 +400,12 @@ export default function AdminContactPage() {
             </div>
             
             <div style={{ 
-              backgroundColor: '#f9fafb', 
+              backgroundColor: 'gray', 
               padding: '1rem', 
               borderRadius: '6px',
               marginBottom: message.isReplied && message.reply ? '1rem' : 0
-            }}>
-              <p style={{ color: '#374151', margin: 0, whiteSpace: 'pre-wrap' }}>
+            , color: '#d1d5db'}}>
+              <p style={{ color: '#f3f4f6', margin: 0, whiteSpace: 'pre-wrap' }}>
                 {message.message}
               </p>
             </div>
@@ -422,10 +422,10 @@ export default function AdminContactPage() {
                   alignItems: 'center', 
                   gap: '0.5rem', 
                   marginBottom: '0.5rem' 
-                }}>
+                , color: '#d1d5db'}}>
                   <span style={{ fontWeight: '600', color: '#065f46' }}>Votre réponse</span>
                   {message.repliedAt && (
-                    <span style={{ fontSize: '0.875rem', color: '#059669' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'white'}}>
                       • {formatDate(message.repliedAt)}
                     </span>
                   )}
@@ -440,17 +440,17 @@ export default function AdminContactPage() {
 
         {messages.length === 0 && (
           <div style={{ 
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
+            backgroundColor: '#1f2937',
+            border: '1px solid #374151',
             borderRadius: '8px',
             padding: '3rem',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💬</div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem', color: '#d1d5db'}}>💬</div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#d1d5db'}}>
               Aucun message
             </h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
+            <p style={{ color: '#d1d5db', margin: 0 }}>
               {filter === 'unread' ? 'Aucun message non lu' : 
                filter === 'replied' ? 'Aucun message répondu' : 
                'Aucun message de contact reçu'}
@@ -475,7 +475,7 @@ export default function AdminContactPage() {
           padding: '1rem'
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: '#1f2937',
             borderRadius: '8px',
             padding: '2rem',
             maxWidth: '600px',
@@ -483,48 +483,48 @@ export default function AdminContactPage() {
             maxHeight: '80vh',
             overflow: 'auto'
           }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1rem', color: '#d1d5db'}}>
               {selectedMessage?.isReplied ? 'Réponse existante' : 'Répondre au message'}
             </h2>
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+            <p style={{ color: '#d1d5db', marginBottom: '1.5rem'}}>
               Message de {selectedMessage?.name} ({selectedMessage?.email})
             </p>
 
             {selectedMessage && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' }}>
+              <div style={{ marginBottom: '1.5rem' , color: '#d1d5db'}}>
+                <label style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' , color: '#d1d5db'}}>
                   Message original :
                 </label>
                 <div style={{ 
-                  backgroundColor: '#f9fafb', 
+                  backgroundColor: 'gray', 
                   padding: '1rem', 
                   borderRadius: '6px',
                   marginBottom: '1rem'
-                }}>
-                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.875rem' }}>
+                , color: '#d1d5db'}}>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.875rem' , color: 'white'}}>
                     {selectedMessage.message}
                   </p>
                 </div>
 
                 {selectedMessage.isReplied && selectedMessage.reply ? (
                   <div>
-                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' , color: '#d1d5db'}}>
                       Réponse actuelle :
                     </label>
                     <div style={{ 
-                      backgroundColor: '#ecfdf5', 
+                      backgroundColor: 'gray', 
                       padding: '1rem', 
                       borderRadius: '6px',
                       borderLeft: '4px solid #10b981'
                     }}>
-                      <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: '#065f46' }}>
+                      <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: 'white'}}>
                         {selectedMessage.reply}
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <label htmlFor="reply" style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' }}>
+                    <label htmlFor="reply" style={{ display: 'block', fontWeight: '500', marginBottom: '0.5rem' , color: '#d1d5db'}}>
                       Votre réponse :
                     </label>
                     <textarea
@@ -540,7 +540,7 @@ export default function AdminContactPage() {
                         borderRadius: '6px',
                         fontSize: '0.875rem',
                         resize: 'vertical'
-                      }}
+                      , color: 'gray'}}
                     />
                   </div>
                 )}
@@ -554,8 +554,8 @@ export default function AdminContactPage() {
                   padding: '8px 16px',
                   border: '1px solid #d1d5db',
                   borderRadius: '6px',
-                  backgroundColor: 'white',
-                  color: '#374151',
+                  backgroundColor: '#1f2937',
+                  color: '#f3f4f6',
                   cursor: 'pointer'
                 }}
               >
@@ -570,7 +570,7 @@ export default function AdminContactPage() {
                     border: 'none',
                     borderRadius: '6px',
                     backgroundColor: isSubmitting || !replyText.trim() ? '#9ca3af' : '#ea580c',
-                    color: 'white',
+                    color: '#ffffff',
                     cursor: isSubmitting || !replyText.trim() ? 'not-allowed' : 'pointer'
                   }}
                 >

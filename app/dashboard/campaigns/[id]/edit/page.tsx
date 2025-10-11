@@ -6,7 +6,8 @@ export async function generateStaticParams() {
   // Try to fetch some campaign IDs to satisfy Next.js static export crawling
   try {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-    const res = await fetch(`${apiBase}/campaigns?page=1&limit=20`, { next: { revalidate: 0 } });
+    // Utiliser l'endpoint public pour generateStaticParams
+    const res = await fetch(`${apiBase}/public/campaigns?page=1&limit=20`, { next: { revalidate: 0 } });
     if (!res.ok) throw new Error('fail');
     const data = await res.json();
     const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];

@@ -230,66 +230,9 @@ export default function CampaignsPage() {
             ))}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCampaigns.map((campaign) => (
-              <div key={campaign.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="md:flex">
-                  <div className="md:w-1/3">
-                    <img
-                      src={campaign.images?.[0] || '/placeholder.png'}
-                      alt={campaign.title}
-                      className="w-full h-48 md:h-full object-cover"
-                    />
-                  </div>
-                  <div className="md:w-2/3 p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                        {campaign.category?.name || campaign.category}
-                      </span>
-                      <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
-                        campaign.status === 'active' ? 'bg-green-100 text-green-800' :
-                        campaign.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {campaign.status === 'active' ? 'Active' :
-                         campaign.status === 'completed' ? 'Terminée' : 'En pause'}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{campaign.title}</h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{campaign.description}</p>
-                    
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Collecté</span>
-                        <span>{Math.round(((campaign.currentAmount || 0) / (campaign.targetAmount || 1)) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(((campaign.currentAmount || 0) / (campaign.targetAmount || 1)) * 100, 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-sm mt-2">
-                        <span className="font-semibold text-gray-900">
-                          {formatAmount(campaign.currentAmount || 0)} collectés
-                        </span>
-                        <span className="text-gray-600">
-                          sur {formatAmount(campaign.targetAmount || 0)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">{campaign.totalDonors || 0}</span> donateurs
-                      </div>
-                      <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                        Contribuer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CampaignCard key={campaign.id} campaign={campaign} />
             ))}
           </div>
         )}

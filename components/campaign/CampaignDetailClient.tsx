@@ -2,11 +2,15 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
-import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiHeart, FiX, FiPlay } from 'react-icons/fi';
+import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart } from 'react-icons/fi';
 import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { formatMoney } from '@/lib/utils';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import FavoriteToggle from '@/components/campaign/FavoriteToggle';
+import FavoriteButton from '@/components/campaign/FavoriteButton';
+import { useFavorites } from '@/hooks/useFavorites';
 
 interface CampaignDetailClientProps {
   campaign: any;
@@ -27,31 +31,19 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [showThankYouPopup, setShowThankYouPopup] = useState(false);
   const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
   const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
-  const [favLoading, setFavLoading] = useState<boolean>(false);
+  
+  // Utiliser le hook useFavorites
+  const favorites = useFavorites({
+    campaignId: campaign.id,
+    initialIsFavoris: campaign.isFavoris || false
+  });
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
     loadPlatformFees();
-    // Initial favorite status: infer from count if available is not reliable; fetch user favorites minimalistically
-    (async () => {
-      try {
-        const token = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('auth_user') || '{}')?.token : null;
-        if (!token) return;
-        const res = await fetch(`${API_BASE}/users/favorites?limit=1000&page=1`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
-          const isFav = list.some((fav: any) => (fav?.id === campaign.id) || (fav?.campaignId === campaign.id) || (fav?.campaign?.id === campaign.id));
-          setIsFavorite(isFav);
-        }
-      } catch {}
-    })();
     
     // Vérifier s'il y a un popup en attente dans localStorage
     const keys = Object.keys(localStorage);
@@ -228,6 +220,12 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
       setIsSubmitting(false);
       return;
     }
+
+    if (!captchaToken) {
+      toast({ title: 'Vérification requise', description: 'Veuillez vérifier le reCAPTCHA avant de continuer.', variant: 'destructive' });
+      setIsSubmitting(false);
+      return;
+    }
     try {
       const finalIsAnonymous = isAnonymous;
       const donationData = {
@@ -237,9 +235,30 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
         donorName: finalIsAnonymous ? undefined : donorName.trim(),
         isAnonymous: finalIsAnonymous,
         paymentMethod,
+        token: captchaToken
       };
       
-      const result = await DonationsApi.create(donationData);
+      // Récupérer le token d'authentification (optionnel pour les dons)
+      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
+        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
+        : '';
+
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/donations/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(donationData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la création du don');
+      }
+
+      const result = await response.json();
       
       if (!result || !result.id) {
         throw new Error('Donation non créée');
@@ -285,40 +304,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
     }
   };
 
-  const toggleFavorite = async () => {
-    if (!currentUser) {
-      toast({ title: 'Connexion requise', description: 'Veuillez vous connecter pour ajouter aux favoris.', variant: 'destructive' });
-      return;
-    }
-    setFavLoading(true);
-    try {
-      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
-      const method = isFavorite ? 'DELETE' : 'POST';
-      const res = await fetch(`${API_BASE}/campaigns/${campaign.id}/favorite`, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      if (res.status === 403) {
-        const msg = await res.text();
-        toast({ title: 'Action non autorisée', description: msg || 'Vérifiez vos droits sur cette campagne.', variant: 'destructive' });
-        return;
-      }
-      if (res.status === 404) {
-        toast({ title: 'Campagne introuvable', description: 'Cette campagne n’existe plus.', variant: 'destructive' });
-        return;
-      }
-      if (!res.ok) throw new Error(await res.text());
-      setIsFavorite(!isFavorite);
-      toast({ title: isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris' });
-      if (onRefetch) onRefetch();
-    } catch (e) {
-      console.error('Favorite toggle failed', e);
-      toast({ title: 'Erreur favoris', description: 'Réessayez plus tard.', variant: 'destructive' });
-    } finally {
-      setFavLoading(false);
-    }
-  };
+  // La fonction toggleFavorite est maintenant gérée par le hook useFavorites
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -339,9 +325,15 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   </span>
                 </div>
                 <div className="absolute top-4 right-4 flex space-x-2">
-                  <button onClick={toggleFavorite} disabled={favLoading} className={`${isFavorite ? 'bg-red-500' : 'bg-white/90 hover:bg-white'} p-2 rounded-full transition-colors`}>
-                    <FiHeart className={`w-4 h-4 ${isFavorite ? 'text-white fill-white' : 'text-gray-700'}`} />
-                  </button>
+                  {currentUser && (
+                    <FavoriteToggle
+                      isFavoris={favorites.isFavoris}
+                      onToggle={favorites.toggleFavorite}
+                      isLoading={favorites.isLoading}
+                      size="md"
+                      className="shadow-lg"
+                    />
+                  )}
                   <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
                     <FiShare2 className="w-5 h-5 text-gray-700" />
                   </button>
@@ -528,10 +520,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
 
               <div className="grid grid-cols-2 gap-3 text-center">
-                <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
-                  <FiHeart className="w-4 h-4" />
-                  <span>Suivre</span>
-                </button>
+                <FavoriteButton
+                  campaignId={campaign.id}
+                  initialIsFavoris={campaign.isFavoris || false}
+                  variant="sidebar"
+                />
                 <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
                   <FiShare2 className="w-4 h-4" />
                   <span>Partager</span>
@@ -865,6 +858,13 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               </div>
             </div>
 
+            {/* reCAPTCHA */}
+            <div className="flex justify-center mt-6">
+              <ResponsiveReCAPTCHA
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                onChange={(token: string | null) => setCaptchaToken(token)}
+              />
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <button

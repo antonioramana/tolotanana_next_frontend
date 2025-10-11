@@ -167,7 +167,7 @@ export default function AdminTestimonialsPage() {
     return Array.from({ length: 5 }, (_, i) => (
       <FiStar
         key={i}
-        className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        className={`h-4 w-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-100'}`}
       />
     ));
   };
@@ -175,7 +175,7 @@ export default function AdminTestimonialsPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Gestion des Témoignages</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Gestion des Témoignages</h1>
         <button
           onClick={handleCreate}
           className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 flex items-center gap-2"
@@ -187,30 +187,30 @@ export default function AdminTestimonialsPage() {
 
       {/* Dashboard Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between">
+        <div className="bg-gray-800 rounded-lg shadow-md p-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Total Témoignages</p>
-            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-sm font-medium text-gray-100">Total Témoignages</p>
+            <p className="text-3xl font-bold text-white">{stats.total}</p>
           </div>
           <FiMessageSquare className="h-10 w-10 text-orange-400 opacity-70" />
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between">
+        <div className="bg-gray-800 rounded-lg shadow-md p-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Témoignages Actifs</p>
+            <p className="text-sm font-medium text-gray-100">Témoignages Actifs</p>
             <p className="text-3xl font-bold text-green-600">{stats.active}</p>
           </div>
           <FiEye className="h-10 w-10 text-green-400 opacity-70" />
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between">
+        <div className="bg-gray-800 rounded-lg shadow-md p-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Mis en Avant</p>
+            <p className="text-sm font-medium text-gray-100">Mis en Avant</p>
             <p className="text-3xl font-bold text-purple-600">{stats.highlighted}</p>
           </div>
           <FiAward className="h-10 w-10 text-purple-400 opacity-70" />
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between">
+        <div className="bg-gray-800 rounded-lg shadow-md p-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Note Moyenne</p>
+            <p className="text-sm font-medium text-gray-100">Note Moyenne</p>
             <p className="text-3xl font-bold text-yellow-600">{stats.averageRating.toFixed(1)}/5</p>
           </div>
           <FiStar className="h-10 w-10 text-yellow-400 opacity-70" />
@@ -227,7 +227,7 @@ export default function AdminTestimonialsPage() {
               onChange={(e) => setShowInactive(e.target.checked)}
               className="rounded"
             />
-            <span className="text-gray-700">Inclure les témoignages inactifs</span>
+            <span className="text-gray-900">Inclure les témoignages inactifs</span>
           </label>
         </div>
       </div>
@@ -237,46 +237,46 @@ export default function AdminTestimonialsPage() {
         {loading ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des témoignages...</p>
+            <p className="text-gray-100">Chargement des témoignages...</p>
           </div>
         ) : testimonials.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">Aucun témoignage trouvé.</div>
+          <div className="text-center py-8 text-gray-100">Aucun témoignage trouvé.</div>
         ) : (
           testimonials.map((testimonial) => (
             <div
               key={testimonial.id}
-              className={`bg-white rounded-lg shadow-md p-6 border-l-4 ${
+              className={`bg-gray-800 rounded-lg shadow-md p-6 border-l-4 ${
                 testimonial.isHighlight ? 'border-purple-500' : testimonial.isActive ? 'border-green-500' : 'border-gray-300'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-800">{testimonial.name}</h3>
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">{testimonial.role}</span>
+                    <h3 className="text-xl font-semibold text-white">{testimonial.name}</h3>
+                    <span className="bg-gray-700 text-white px-2 py-1 rounded-full text-sm">{testimonial.role}</span>
                     <div className="flex items-center gap-1">
                       {renderStars(testimonial.rating)}
                     </div>
                   </div>
                   {testimonial.campaign && (
-                    <p className="text-sm text-gray-600 mb-2">Campagne : {testimonial.campaign}</p>
+                    <p className="text-sm text-gray-100 mb-2">Campagne : {testimonial.campaign}</p>
                   )}
-                  <p className="text-gray-700 mb-3">{testimonial.content}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <p className="text-gray-100 mb-3">{testimonial.content}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-100">
                     <span>Créé le {formatFrenchDate(testimonial.createdAt)}</span>
                     <span>Par {testimonial.creator.firstName} {testimonial.creator.lastName}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   {testimonial.isHighlight && (
-                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Mis en avant</span>
+                    <span className="bg-purple-700 text-white text-xs font-medium px-2.5 py-0.5 rounded-full">Mis en avant</span>
                   )}
                   {!testimonial.isActive && (
-                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Inactif</span>
+                    <span className="bg-red-700 text-white text-xs font-medium px-2.5 py-0.5 rounded-full">Inactif</span>
                   )}
                   <button
                     onClick={() => handleEdit(testimonial)}
-                    className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600"
+                    className="p-2 rounded-full bg-blue-700 hover:bg-blue-600 text-white"
                     title="Modifier"
                   >
                     <FiEdit className="h-4 w-4" />
@@ -284,7 +284,7 @@ export default function AdminTestimonialsPage() {
                   <button
                     onClick={() => handleToggleActive(testimonial.id)}
                     className={`p-2 rounded-full ${
-                      testimonial.isActive ? 'bg-red-100 hover:bg-red-200 text-red-600' : 'bg-green-100 hover:bg-green-200 text-green-600'
+                      testimonial.isActive ? 'bg-red-700 hover:bg-red-600 text-white' : 'bg-green-700 hover:bg-green-600 text-white'
                     }`}
                     title={testimonial.isActive ? 'Désactiver' : 'Activer'}
                   >
@@ -293,7 +293,7 @@ export default function AdminTestimonialsPage() {
                   <button
                     onClick={() => handleToggleHighlight(testimonial.id)}
                     className={`p-2 rounded-full ${
-                      testimonial.isHighlight ? 'bg-gray-100 hover:bg-gray-200 text-gray-600' : 'bg-purple-100 hover:bg-purple-200 text-purple-600'
+                      testimonial.isHighlight ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-purple-700 hover:bg-purple-600 text-white'
                     }`}
                     title={testimonial.isHighlight ? 'Retirer de la mise en avant' : 'Mettre en avant'}
                   >
@@ -301,7 +301,7 @@ export default function AdminTestimonialsPage() {
                   </button>
                   <button
                     onClick={() => handleDelete(testimonial.id)}
-                    className="p-2 rounded-full bg-red-100 hover:bg-red-200 text-red-600"
+                    className="p-2 rounded-full bg-red-700 hover:bg-red-600 text-white"
                     title="Supprimer"
                   >
                     <FiTrash2 className="h-4 w-4" />
@@ -316,82 +316,82 @@ export default function AdminTestimonialsPage() {
       {/* Modal de création/édition */}
       {(isCreating || isEditing) && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">
               {isCreating ? 'Nouveau Témoignage' : 'Modifier le Témoignage'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                  <label className="block text-sm font-medium text-gray-100 mb-1">Nom</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+                  <label className="block text-sm font-medium text-gray-100 mb-1">Rôle</label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value="Bénéficiaire">Bénéficiaire</option>
-                    <option value="Créateur de campagne">Créateur de campagne</option>
-                    <option value="Donatrice">Donatrice</option>
-                    <option value="Donateur">Donateur</option>
-                    <option value="Utilisateur">Utilisateur</option>
+                    <option value="Bénéficiaire" style={{backgroundColor: '#1f2937', color: 'white'}}>Bénéficiaire</option>
+                    <option value="Créateur de campagne" style={{backgroundColor: '#1f2937', color: 'white'}}>Créateur de campagne</option>
+                    <option value="Donatrice" style={{backgroundColor: '#1f2937', color: 'white'}}>Donatrice</option>
+                    <option value="Donateur" style={{backgroundColor: '#1f2937', color: 'white'}}>Donateur</option>
+                    <option value="Utilisateur" style={{backgroundColor: '#1f2937', color: 'white'}}>Utilisateur</option>
                   </select>
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Avatar (URL)</label>
+                <label className="block text-sm font-medium text-gray-100 mb-1">Avatar (URL)</label>
                 <input
                   type="url"
                   value={formData.avatar}
                   onChange={(e) => setFormData({ ...formData, avatar: e.target.value })}
                   placeholder="https://example.com/avatar.jpg"
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contenu du témoignage</label>
+                <label className="block text-sm font-medium text-gray-100 mb-1">Contenu du témoignage</label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   required
                   rows={4}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 ></textarea>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Campagne (optionnel)</label>
+                  <label className="block text-sm font-medium text-gray-100 mb-1">Campagne (optionnel)</label>
                   <input
                     type="text"
                     value={formData.campaign}
                     onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Note (1-5 étoiles)</label>
+                  <label className="block text-sm font-medium text-gray-100 mb-1">Note (1-5 étoiles)</label>
                   <select
                     value={formData.rating}
                     onChange={(e) => setFormData({ ...formData, rating: parseInt(e.target.value) })}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full p-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value={1}>1 étoile</option>
-                    <option value={2}>2 étoiles</option>
-                    <option value={3}>3 étoiles</option>
-                    <option value={4}>4 étoiles</option>
-                    <option value={5}>5 étoiles</option>
+                    <option value={1} style={{backgroundColor: '#1f2937', color: 'white'}}>1 étoile</option>
+                    <option value={2} style={{backgroundColor: '#1f2937', color: 'white'}}>2 étoiles</option>
+                    <option value={3} style={{backgroundColor: '#1f2937', color: 'white'}}>3 étoiles</option>
+                    <option value={4} style={{backgroundColor: '#1f2937', color: 'white'}}>4 étoiles</option>
+                    <option value={5} style={{backgroundColor: '#1f2937', color: 'white'}}>5 étoiles</option>
                   </select>
                 </div>
               </div>
@@ -404,7 +404,7 @@ export default function AdminTestimonialsPage() {
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     className="rounded"
                   />
-                  <span className="text-gray-700">Témoignage actif</span>
+                  <span className="text-gray-100">Témoignage actif</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
@@ -413,7 +413,7 @@ export default function AdminTestimonialsPage() {
                     onChange={(e) => setFormData({ ...formData, isHighlight: e.target.checked })}
                     className="rounded"
                   />
-                  <span className="text-gray-700">Mettre en avant</span>
+                  <span className="text-gray-100">Mettre en avant</span>
                 </label>
               </div>
 
@@ -421,7 +421,7 @@ export default function AdminTestimonialsPage() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-md text-gray-100 hover:bg-gray-100"
                 >
                   Annuler
                 </button>

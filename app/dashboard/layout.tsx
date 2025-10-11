@@ -49,19 +49,19 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
-        {/* Sidebar desktop */}
-        <div className="hidden lg:block lg:w-80 lg:fixed lg:h-full pt-16">
+        {/* Sidebar desktop - accolé à la navbar */}
+        <div className="hidden lg:block lg:w-80 lg:fixed lg:h-screen lg:top-0 lg:left-0 lg:z-30">
           <Sidebar userRole={currentUser?.role || 'demandeur'} />
         </div>
 
-        {/* Off-canvas Sidebar mobile/tablette */}
+        {/* Off-canvas Sidebar mobile/tablette - accolé à la navbar */}
         {isSidebarOpen && (
           <>
             <div
               className="fixed inset-0 bg-black/50 z-40 lg:hidden"
               onClick={() => setIsSidebarOpen(false)}
             />
-            <div className="fixed top-16 left-0 bottom-0 w-80 z-50 bg-white shadow-xl lg:hidden overflow-y-auto">
+            <div className="fixed top-0 left-0 bottom-0 w-80 z-50 bg-white shadow-xl lg:hidden overflow-y-auto">
               <div className="flex items-center justify-between p-4 border-b">
                 <span className="font-semibold">Menu</span>
                 <button
@@ -78,7 +78,7 @@ export default function DashboardLayout({
         )}
 
         {/* Contenu principal */}
-        <div className="flex-1 w-full lg:ml-80 pt-24 p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 w-full lg:ml-80 pt-16 p-4 sm:p-6 lg:p-8">
           {/* Bouton pour ouvrir la sidebar sur mobile */}
           <div className="lg:hidden mb-4">
             <button

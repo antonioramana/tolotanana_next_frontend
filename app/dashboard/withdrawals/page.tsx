@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEye, FiEdit, FiTrash2, FiDollarSign, FiCalendar, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi';
 import { WithdrawalsApi, CatalogApi, BankApi, CampaignsApi } from '@/lib/api';
+import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function UserWithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -154,7 +155,7 @@ export default function UserWithdrawalsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -417,6 +418,7 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const selectedCampaign = campaigns.find((c: any) => c.id === formData.campaignId);
 
@@ -427,13 +429,44 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
       return;
     }
 
+    if (!captchaToken) {
+      setError('Veuillez vérifier le reCAPTCHA avant de soumettre la demande');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      await WithdrawalsApi.create({
-        ...formData,
-        amount: parseFloat(formData.amount)
+      
+      // Récupérer le token d'authentification
+      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
+        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
+        : '';
+
+      if (!token) {
+        setError('Vous devez être connecté pour effectuer cette action');
+        return;
+      }
+
+      // Utiliser la nouvelle API avec protection reCAPTCHA
+      const response = await fetch('/api/withdrawals/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...formData,
+          amount: parseFloat(formData.amount),
+          token: captchaToken
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la création de la demande');
+      }
+
       onSuccess();
     } catch (e: any) {
       setError(e.message || 'Erreur lors de la création de la demande');
@@ -575,6 +608,14 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
               rows={4}
               placeholder="Expliquez l'utilisation prévue des fonds..."
               required
+            />
+          </div>
+
+          {/* reCAPTCHA */}
+          <div className="flex justify-center">
+            <ResponsiveReCAPTCHA
+              sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+              onChange={(token: string | null) => setCaptchaToken(token)}
             />
           </div>
 
