@@ -1,0 +1,44 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22.20.0"
+  NPM_VERSION = "10.9.3"
+
+# Configuration pour Next.js
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Redirections pour les pages dynamiques
+[[redirects]]
+  from = "/campaigns/*"
+  to = "/campaigns/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard/campaigns/*/edit"
+  to = "/dashboard/campaigns/:splat/edit"
+  status = 200
+
+# Headers de sécurité
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache pour les assets statiques
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Configuration pour les API routes
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
