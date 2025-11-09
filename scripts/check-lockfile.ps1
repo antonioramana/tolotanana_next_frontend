@@ -23,3 +23,6 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Write-Host "✅ Vérification terminée" -ForegroundColor Green
+
+
+

@@ -24,3 +24,6 @@ else
 fi
 
 echo "✅ Vérification terminée"
+
+
+
