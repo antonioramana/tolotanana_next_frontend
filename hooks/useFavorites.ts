@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,6 +22,11 @@ export const useFavorites = ({
   const [isFavoris, setIsFavoris] = useState(initialIsFavoris);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsFavoris(initialIsFavoris);
+    setIsLoading(false);
+  }, [campaignId, initialIsFavoris]);
 
   const toggleFavorite = useCallback(async () => {
     if (isLoading) return;

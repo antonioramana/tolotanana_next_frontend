@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
-import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart } from 'react-icons/fi';
+import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +32,15 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
   const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [donationsPage, setDonationsPage] = useState(1);
+  const [updatesPage, setUpdatesPage] = useState(1);
+  const [recentDonationsPage, setRecentDonationsPage] = useState(1);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [hasCopiedShareLink, setHasCopiedShareLink] = useState(false);
+  const donationsPerPage = 3;
+  const updatesPerPage = 3;
+  const recentDonationsPerPage = 3;
+  const shareInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -165,6 +174,79 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const otherImages = Array.isArray(campaign.images) ? campaign.images.slice(1) : [];
   const hasVideo = Boolean((campaign as any).video);
   const videoSrc: string | undefined = (campaign as any).video;
+  const shareUrl = useMemo(() => {
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.href;
+    }
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      'http://localhost:3000';
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${normalizedBase}/campaigns/${campaign.slug || campaign.id}`;
+  }, [campaign.id, campaign.slug]);
+  const encodedShareText = useMemo(() => {
+    const message = campaign.title
+      ? `${campaign.title} – Découvrez cette campagne sur Tolotanana`
+      : 'Découvrez cette campagne sur Tolotanana';
+    return encodeURIComponent(`${message} ${shareUrl}`);
+  }, [campaign.title, shareUrl]);
+  const quickShareLinks = useMemo(() => {
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const emailSubject = encodeURIComponent(campaign.title || 'Découvrez cette campagne Tolotanana');
+    return [
+      {
+        label: 'WhatsApp',
+        href: `https://wa.me/?text=${encodedShareText}`,
+        className: 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100',
+      },
+      {
+        label: 'Facebook',
+        href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+        className: 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100',
+      },
+      {
+        label: 'X (Twitter)',
+        href: `https://twitter.com/intent/tweet?text=${encodedShareText}`,
+        className: 'bg-black text-white border-gray-900 hover:bg-gray-900',
+      },
+      {
+        label: 'Email',
+        href: `mailto:?subject=${emailSubject}&body=${encodedShareText}`,
+        className: 'bg-orange-50 text-orange-700 border-orange-100 hover:bg-orange-100',
+      },
+    ];
+  }, [campaign.title, encodedShareText, shareUrl]);
+  const sortedDonations = useMemo(() => {
+    if (!Array.isArray(campaign.donations)) return [];
+    return [...campaign.donations].sort(
+      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [campaign.donations]);
+  const totalDonationPages = Math.max(1, Math.ceil(sortedDonations.length / donationsPerPage));
+  const paginatedDonations = sortedDonations.slice(
+    (donationsPage - 1) * donationsPerPage,
+    donationsPage * donationsPerPage
+  );
+  const sortedUpdates = useMemo(() => {
+    if (!Array.isArray(campaign.updates)) return [];
+    return [...campaign.updates].sort(
+      (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [campaign.updates]);
+  const totalUpdatesPages = Math.max(1, Math.ceil(sortedUpdates.length / updatesPerPage));
+  const paginatedUpdates = sortedUpdates.slice(
+    (updatesPage - 1) * updatesPerPage,
+    updatesPage * updatesPerPage
+  );
+  const totalRecentDonationPages = Math.max(
+    1,
+    Math.ceil(sortedDonations.length / recentDonationsPerPage)
+  );
+  const paginatedRecentDonations = sortedDonations.slice(
+    (recentDonationsPage - 1) * recentDonationsPerPage,
+    recentDonationsPage * recentDonationsPerPage
+  );
 
   const getVideoEmbedUrl = (url: string) => {
     try {
@@ -198,6 +280,71 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
         return adminBankInfos;
     }
   };
+  const handleShareInputFocus = useCallback(() => {
+    if (shareInputRef.current) {
+      shareInputRef.current.select();
+    }
+  }, []);
+
+  const copyShareLink = useCallback(async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else if (typeof document !== 'undefined') {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setHasCopiedShareLink(true);
+      toast({
+        title: 'Lien copié',
+        description: 'L’URL de la campagne est dans le presse-papiers.',
+      });
+    } catch (error) {
+      console.error('Erreur lors de la copie du lien de partage:', error);
+      toast({
+        title: 'Copie impossible',
+        description: 'Copiez manuellement : ' + shareUrl,
+        variant: 'destructive',
+      });
+    }
+  }, [shareUrl, toast]);
+
+  useEffect(() => {
+    if (!showShareModal && hasCopiedShareLink) {
+      setHasCopiedShareLink(false);
+    }
+  }, [showShareModal, hasCopiedShareLink]);
+
+  useEffect(() => {
+    setDonationsPage(1);
+    setUpdatesPage(1);
+    setRecentDonationsPage(1);
+  }, [campaign.id]);
+
+  useEffect(() => {
+    if (donationsPage > totalDonationPages) {
+      setDonationsPage(totalDonationPages);
+    }
+  }, [donationsPage, totalDonationPages]);
+
+  useEffect(() => {
+    if (updatesPage > totalUpdatesPages) {
+      setUpdatesPage(totalUpdatesPages);
+    }
+  }, [updatesPage, totalUpdatesPages]);
+
+  useEffect(() => {
+    if (recentDonationsPage > totalRecentDonationPages) {
+      setRecentDonationsPage(totalRecentDonationPages);
+    }
+  }, [recentDonationsPage, totalRecentDonationPages]);
 
   const handleDonation = async () => {
     
@@ -334,7 +481,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                       className="shadow-lg"
                     />
                   )}
-                  <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setShowShareModal(true)}
+                    className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors"
+                  >
                     <FiShare2 className="w-5 h-5 text-gray-700" />
                   </button>
                   <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
@@ -352,6 +503,14 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
               <div className="p-6">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
+                {campaign.reference && (
+                  <div className="inline-flex items-center gap-2 mb-4">
+                    <span className="text-xs uppercase tracking-wide text-gray-500">Référence</span>
+                    <span className="font-mono text-sm font-semibold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+                      {campaign.reference}
+                    </span>
+                  </div>
+                )}
                 <div className="text-sm text-gray-500 mb-4">
                   Publié le {new Date(campaign.createdAt).toLocaleDateString('fr-FR')} par {campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}
                 </div>
@@ -443,11 +602,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               </div>
             )}
 
-            {campaign.updates && campaign.updates.length > 0 && (
+            {sortedUpdates.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Actualités</h2>
                 <div className="space-y-6">
-                  {campaign.updates.map((update: any) => (
+                  {paginatedUpdates.map((update: any) => (
                     <div key={update.id} className="border-l-4 border-orange-500 pl-6">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">{update.title}</h3>
@@ -459,39 +618,89 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                     </div>
                   ))}
                 </div>
+                {totalUpdatesPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500">Page {updatesPage} / {totalUpdatesPages}</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setUpdatesPage((prev) => Math.max(1, prev - 1))}
+                        disabled={updatesPage === 1}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Précédent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUpdatesPage((prev) => Math.min(totalUpdatesPages, prev + 1))}
+                        disabled={updatesPage === totalUpdatesPages}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Derniers dons</h2>
-              <div className="space-y-4">
-                {(campaign.donations || []).slice(0, 3).map((donation: any) => {
-                  const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
-                  const donorName = donation.isAnonymous ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
-                  return (
-                    <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden">
-                           <FiHeart className="w-4 h-4" />
+            {sortedDonations.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Derniers dons</h2>
+                <div className="space-y-4">
+                  {paginatedRecentDonations.map((donation: any) => {
+                    const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
+                    const donorName = donation.isAnonymous ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
+                    return (
+                      <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden">
+                             <FiHeart className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{donorName}</p>
+                            {donation.message && (
+                              <p className="text-sm text-gray-600">"{donation.message}"</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{donorName}</p>
-                          {donation.message && (
-                            <p className="text-sm text-gray-600">"{donation.message}"</p>
-                          )}
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(donation.createdAt).toLocaleDateString('fr-FR')}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(donation.createdAt).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
+                    );
+                  })}
+                </div>
+                {totalRecentDonationPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500">
+                      Page {recentDonationsPage} / {totalRecentDonationPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRecentDonationsPage((prev) => Math.max(1, prev - 1))}
+                        disabled={recentDonationsPage === 1}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Précédent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRecentDonationsPage((prev) => Math.min(totalRecentDonationPages, prev + 1))}
+                        disabled={recentDonationsPage === totalRecentDonationPages}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Suivant
+                      </button>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -525,7 +734,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   initialIsFavoris={campaign.isFavoris || false}
                   variant="sidebar"
                 />
-                <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                >
                   <FiShare2 className="w-4 h-4" />
                   <span>Partager</span>
                 </button>
@@ -587,44 +800,69 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Tous les dons</h3>
                 <div className="space-y-3 max-h-[460px] overflow-auto pr-1">
-                  {[...campaign.donations]
-                    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((donation: any) => {
-                      const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
-                      const isAnon = donation.isAnonymous;
-                      const donorName = isAnon ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
-                      const avatar = donation.donor?.avatar || '/placeholder-avatar.png';
-                      return (
-                        <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <img src={avatar} alt={donorName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                            <div className="min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{donorName}</p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(donation.createdAt).toLocaleString('fr-FR', {
-                                  year: 'numeric',
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit'
-                                })} · {donation.paymentMethod}
-                              </p>
-                              {donation.message && (
-                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">“{donation.message}”</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right ml-3 flex-shrink-0">
-                            <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${donation.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                              {donation.status}
-                            </span>
+                  {paginatedDonations.map((donation: any) => {
+                    const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
+                    const isAnon = donation.isAnonymous;
+                    const donorName = isAnon ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
+                    const avatar = donation.donor?.avatar || '/placeholder-avatar.png';
+                    return (
+                      <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img src={avatar} alt={donorName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{donorName}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(donation.createdAt).toLocaleString('fr-FR', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                              })} · {donation.paymentMethod}
+                            </p>
+                            {donation.message && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">“{donation.message}”</p>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="text-right ml-3 flex-shrink-0">
+                          <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
+                          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${donation.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {donation.status}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+                {totalDonationPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-600">
+                      Page {donationsPage} / {totalDonationPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDonationsPage((prev) => Math.max(1, prev - 1))}
+                        disabled={donationsPage === 1}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        <FiChevronLeft className="w-4 h-4" />
+                        Précédent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDonationsPage((prev) => Math.min(totalDonationPages, prev + 1))}
+                        disabled={donationsPage === totalDonationPages}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        Suivant
+                        <FiChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -659,6 +897,78 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   <video controls src={videoSrc} className="w-full max-h-[80vh]" />
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">Partager</p>
+                <h3 className="text-xl font-bold text-gray-900 mt-1">Diffusez cette campagne</h3>
+                <p className="text-sm text-gray-500 mt-1">Copiez le lien ci-dessous ou envoyez-le via vos applications préférées.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Lien de partage</label>
+                <div className="mt-2 flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50">
+                    <FiShare2 className="w-5 h-5 text-orange-500" />
+                    <input
+                      ref={shareInputRef}
+                      type="text"
+                      readOnly
+                      value={shareUrl}
+                      onFocus={handleShareInputFocus}
+                      className="flex-1 bg-transparent text-sm font-medium text-gray-800 focus:outline-none select-all cursor-text"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleShareInputFocus();
+                      copyShareLink();
+                    }}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      hasCopiedShareLink
+                        ? 'bg-green-600 text-white'
+                        : 'bg-orange-500 text-white hover:bg-orange-600'
+                    }`}
+                  >
+                    {hasCopiedShareLink ? 'Lien copié' : 'Copier'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Partager via</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {quickShareLinks.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`rounded-xl border px-4 py-3 text-center text-sm font-semibold transition-colors ${link.className}`}
+                      onClick={() => setTimeout(() => setShowShareModal(false), 150)}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
