@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
-import { FiShare2, FiFlag, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart } from 'react-icons/fi';
+import { FiShare2, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +10,7 @@ import { formatMoney } from '@/lib/utils';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 import FavoriteToggle from '@/components/campaign/FavoriteToggle';
 import FavoriteButton from '@/components/campaign/FavoriteButton';
+import ShareModal from '@/components/campaign/ShareModal';
 import { useFavorites } from '@/hooks/useFavorites';
 
 interface CampaignDetailClientProps {
@@ -32,6 +33,10 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
   const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [currentDonationsPage, setCurrentDonationsPage] = useState(1);
+  const [currentUpdatesPage, setCurrentUpdatesPage] = useState(1);
+  const [currentLatestDonationsPage, setCurrentLatestDonationsPage] = useState(1);
+  const [showShareModal, setShowShareModal] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -325,20 +330,25 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   </span>
                 </div>
                 <div className="absolute top-4 right-4 flex space-x-2">
-                  {currentUser && (
-                    <FavoriteToggle
-                      isFavoris={favorites.isFavoris}
-                      onToggle={favorites.toggleFavorite}
-                      isLoading={favorites.isLoading}
-                      size="md"
-                      className="shadow-lg"
-                    />
-                  )}
-                  <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
+                  <FavoriteToggle
+                    isFavoris={favorites.isFavoris}
+                    onToggle={currentUser ? favorites.toggleFavorite : () => {
+                      toast({
+                        title: 'Connexion requise',
+                        description: 'Veuillez vous connecter pour suivre cette campagne',
+                        variant: 'destructive',
+                      });
+                    }}
+                    isLoading={favorites.isLoading}
+                    size="md"
+                    className="shadow-lg"
+                  />
+                  <button 
+                    onClick={() => setShowShareModal(true)}
+                    className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors"
+                    aria-label="Partager"
+                  >
                     <FiShare2 className="w-5 h-5 text-gray-700" />
-                  </button>
-                  <button className="bg-white/90 hover:bg-white p-2 rounded-full transition-colors">
-                    <FiFlag className="w-5 h-5 text-gray-700" />
                   </button>
                 </div>
                 {isInactive && (
@@ -443,55 +453,135 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               </div>
             )}
 
-            {campaign.updates && campaign.updates.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Actualités</h2>
-                <div className="space-y-6">
-                  {campaign.updates.map((update: any) => (
-                    <div key={update.id} className="border-l-4 border-orange-500 pl-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{update.title}</h3>
-                        <span className="text-sm text-gray-500">
-                          {new Date(update.createdAt).toLocaleDateString('fr-FR')}
+            {campaign.updates && campaign.updates.length > 0 && (() => {
+              const updatesPerPage = 3;
+              const sortedUpdates = [...campaign.updates]
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              const totalPages = Math.ceil(sortedUpdates.length / updatesPerPage);
+              const startIndex = (currentUpdatesPage - 1) * updatesPerPage;
+              const endIndex = startIndex + updatesPerPage;
+              const paginatedUpdates = sortedUpdates.slice(startIndex, endIndex);
+
+              return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Actualités</h2>
+                  <div className="space-y-6 mb-4">
+                    {paginatedUpdates.map((update: any) => (
+                      <div key={update.id} className="border-l-4 border-orange-500 pl-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{update.title}</h3>
+                          <span className="text-sm text-gray-500">
+                            {new Date(update.createdAt).toLocaleDateString('fr-FR')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{update.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => setCurrentUpdatesPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentUpdatesPage === 1}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <FiChevronLeft className="w-4 h-4" />
+                        Précédent
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Page <span className="font-semibold">{currentUpdatesPage}</span> sur <span className="font-semibold">{totalPages}</span>
                         </span>
                       </div>
-                      <p className="text-gray-700">{update.content}</p>
+                      
+                      <button
+                        onClick={() => setCurrentUpdatesPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentUpdatesPage === totalPages}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Suivant
+                        <FiChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Derniers dons</h2>
-              <div className="space-y-4">
-                {(campaign.donations || []).slice(0, 3).map((donation: any) => {
-                  const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
-                  const donorName = donation.isAnonymous ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
-                  return (
-                    <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden">
-                           <FiHeart className="w-4 h-4" />
+            {Array.isArray(campaign.donations) && campaign.donations.length > 0 && (() => {
+              const donationsPerPage = 3;
+              const sortedLatestDonations = [...campaign.donations]
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              const totalPages = Math.ceil(sortedLatestDonations.length / donationsPerPage);
+              const startIndex = (currentLatestDonationsPage - 1) * donationsPerPage;
+              const endIndex = startIndex + donationsPerPage;
+              const paginatedLatestDonations = sortedLatestDonations.slice(startIndex, endIndex);
+
+              return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Derniers dons</h2>
+                  <div className="space-y-4 mb-4">
+                    {paginatedLatestDonations.map((donation: any) => {
+                      const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
+                      const donorName = donation.isAnonymous ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
+                      return (
+                        <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center overflow-hidden">
+                               <FiHeart className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{donorName}</p>
+                              {donation.message && (
+                                <p className="text-sm text-gray-600">"{donation.message}"</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(donation.createdAt).toLocaleDateString('fr-FR')}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{donorName}</p>
-                          {donation.message && (
-                            <p className="text-sm text-gray-600">"{donation.message}"</p>
-                          )}
-                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => setCurrentLatestDonationsPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentLatestDonationsPage === 1}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <FiChevronLeft className="w-4 h-4" />
+                        Précédent
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Page <span className="font-semibold">{currentLatestDonationsPage}</span> sur <span className="font-semibold">{totalPages}</span>
+                        </span>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(donation.createdAt).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentLatestDonationsPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentLatestDonationsPage === totalPages}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Suivant
+                        <FiChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="space-y-6">
@@ -524,8 +614,14 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   campaignId={campaign.id}
                   initialIsFavoris={campaign.isFavoris || false}
                   variant="sidebar"
+                  isFavoris={favorites.isFavoris}
+                  onToggle={favorites.toggleFavorite}
+                  isLoading={favorites.isLoading}
                 />
-                <button className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                <button 
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center justify-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                >
                   <FiShare2 className="w-4 h-4" />
                   <span>Partager</span>
                 </button>
@@ -583,13 +679,20 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             )}
 
             {/* Donations list under stats */}
-            {Array.isArray(campaign.donations) && campaign.donations.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tous les dons</h3>
-                <div className="space-y-3 max-h-[460px] overflow-auto pr-1">
-                  {[...campaign.donations]
-                    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((donation: any) => {
+            {Array.isArray(campaign.donations) && campaign.donations.length > 0 && (() => {
+              const donationsPerPage = 3;
+              const sortedDonations = [...campaign.donations]
+                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              const totalPages = Math.ceil(sortedDonations.length / donationsPerPage);
+              const startIndex = (currentDonationsPage - 1) * donationsPerPage;
+              const endIndex = startIndex + donationsPerPage;
+              const paginatedDonations = sortedDonations.slice(startIndex, endIndex);
+
+              return (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Tous les dons</h3>
+                  <div className="space-y-3 mb-4">
+                    {paginatedDonations.map((donation: any) => {
                       const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
                       const isAnon = donation.isAnonymous;
                       const donorName = isAnon ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
@@ -611,7 +714,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                                 })} · {donation.paymentMethod}
                               </p>
                               {donation.message && (
-                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">“{donation.message}”</p>
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">"{donation.message}"</p>
                               )}
                             </div>
                           </div>
@@ -624,9 +727,39 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                         </div>
                       );
                     })}
+                  </div>
+                  
+                  {/* Pagination controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => setCurrentDonationsPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentDonationsPage === 1}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <FiChevronLeft className="w-4 h-4" />
+                        Précédent
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">
+                          Page <span className="font-semibold">{currentDonationsPage}</span> sur <span className="font-semibold">{totalPages}</span>
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={() => setCurrentDonationsPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentDonationsPage === totalPages}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Suivant
+                        <FiChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -971,6 +1104,14 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        campaignTitle={campaign.title}
+        campaignId={campaign.id}
+      />
     </div>
   );
 }

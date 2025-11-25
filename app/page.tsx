@@ -6,6 +6,10 @@ import { FiArrowRight, FiShield, FiTrendingUp, FiUsers, FiHeart, FiStar, FiMessa
 import { getStoredUser } from '@/lib/auth-client';
 import { CatalogApi, PublicTestimonialsApi } from '@/lib/api';
 import { PublicTestimonial } from '@/types';
+import StatsSkeleton from '@/components/ui/StatsSkeleton';
+import CampaignCardSkeleton from '@/components/ui/CampaignCardSkeleton';
+import TestimonialSkeleton from '@/components/ui/TestimonialSkeleton';
+import LoadingDots from '@/components/ui/LoadingDots';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -126,17 +130,21 @@ export default function Home() {
       {/* Stats Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
-                  <stat.icon className="w-8 h-8 text-orange-600" />
+          {loading ? (
+            <StatsSkeleton />
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
+                    <stat.icon className="w-8 h-8 text-orange-600" />
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
+                  <div className="text-gray-600">{stat.label}</div>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
-                <div className="text-gray-600">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -153,7 +161,17 @@ export default function Home() {
           </div>
           
           {loading ? (
-            <div className="text-center text-gray-600 py-12">Chargement des campagnes...</div>
+            <>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+                {[...Array(3)].map((_, index) => (
+                  <CampaignCardSkeleton key={index} />
+                ))}
+              </div>
+              <div className="text-center py-8">
+                <LoadingDots size="lg" color="orange" />
+                <p className="text-gray-600 mt-4 text-sm">Chargement des campagnes...</p>
+              </div>
+            </>
           ) : (
             <>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
@@ -234,59 +252,67 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {testimonials.length === 0 ? (
-              <div className="col-span-full text-center py-8">
-                <p className="text-gray-500">Aucun témoignage disponible pour le moment.</p>
-              </div>
-            ) : (
-              testimonials.map((testimonial) => (
-                <div key={testimonial.id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
-                  <div className="flex items-center mb-4">
-                    <div className="flex-shrink-0">
-                      {testimonial.avatar ? (
-                        <img
-                          src={testimonial.avatar}
-                          alt={testimonial.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-                          <FiUsers className="w-6 h-6 text-orange-600" />
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(3)].map((_, index) => (
+                <TestimonialSkeleton key={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {testimonials.length === 0 ? (
+                <div className="col-span-full text-center py-8">
+                  <p className="text-gray-500">Aucun témoignage disponible pour le moment.</p>
+                </div>
+              ) : (
+                testimonials.map((testimonial) => (
+                  <div key={testimonial.id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center mb-4">
+                      <div className="flex-shrink-0">
+                        {testimonial.avatar ? (
+                          <img
+                            src={testimonial.avatar}
+                            alt={testimonial.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                            <FiUsers className="w-6 h-6 text-orange-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4 flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900">{testimonial.name}</h4>
+                        <p className="text-sm text-orange-600 font-medium">{testimonial.role}</p>
+                        <div className="flex items-center mt-1">
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                            <FiStar key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                          ))}
                         </div>
-                      )}
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                          <FiMessageSquare className="w-4 h-4 text-orange-600" />
+                        </div>
+                      </div>
                     </div>
-                  <div className="ml-4 flex-1">
-                    <h4 className="text-lg font-semibold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-orange-600 font-medium">{testimonial.role}</p>
-                    <div className="flex items-center mt-1">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <FiStar key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                      ))}
+                    
+                    <div className="mb-4">
+                      <p className="text-gray-700 leading-relaxed italic">
+                        "{testimonial.content}"
+                      </p>
+                    </div>
+                    
+                    <div className="border-t border-gray-100 pt-4">
+                      <p className="text-xs text-gray-500 font-medium">
+                        Campagne : {testimonial.campaign || 'Non spécifiée'}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                      <FiMessageSquare className="w-4 h-4 text-orange-600" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <p className="text-gray-700 leading-relaxed italic">
-                    "{testimonial.content}"
-                  </p>
-                </div>
-                
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-xs text-gray-500 font-medium">
-                    Campagne : {testimonial.campaign || 'Non spécifiée'}
-                  </p>
-                </div>
-              </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
           
           <div className="text-center mt-12">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">

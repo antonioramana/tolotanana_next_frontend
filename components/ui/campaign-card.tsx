@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { Campaign } from '@/types';
-import { FiCalendar, FiUsers, FiStar, FiMapPin } from 'react-icons/fi';
+import { FiCalendar, FiUsers, FiShare2, FiMapPin } from 'react-icons/fi';
 import { formatMoney } from '@/lib/utils';
 import FavoriteToggle from '@/components/campaign/FavoriteToggle';
 import FavoriteButton from '@/components/campaign/FavoriteButton';
+import ShareModal from '@/components/campaign/ShareModal';
 import { useFavorites } from '@/hooks/useFavorites';
 import { getStoredUser } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
@@ -14,6 +15,7 @@ interface CampaignCardProps {
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   useEffect(() => {
     setCurrentUser(getStoredUser());
@@ -69,11 +71,13 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
                 className="shadow-lg"
               />
             )}
-            {campaign.isVerified && (
-              <div className="bg-blue-500 text-white p-1 rounded-full">
-                <FiStar className="w-4 h-4" />
-              </div>
-            )}
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="bg-white/90 hover:bg-white p-1.5 rounded-full transition-colors shadow-lg"
+              aria-label="Partager"
+            >
+              <FiShare2 className="w-4 h-4 text-gray-700" />
+            </button>
           </div>
         </div>
       </div>
@@ -155,6 +159,14 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        campaignTitle={campaign.title}
+        campaignId={campaign.id}
+      />
     </div>
   );
 }

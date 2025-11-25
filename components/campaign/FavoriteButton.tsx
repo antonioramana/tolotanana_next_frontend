@@ -10,13 +10,20 @@ interface FavoriteButtonProps {
   initialIsFavoris?: boolean;
   variant?: 'sidebar' | 'card' | 'header';
   className?: string;
+  // Props optionnelles pour synchronisation externe
+  isFavoris?: boolean;
+  onToggle?: () => void;
+  isLoading?: boolean;
 }
 
 const FavoriteButton: React.FC<FavoriteButtonProps> = ({ 
   campaignId, 
   initialIsFavoris = false,
   variant = 'sidebar',
-  className = ''
+  className = '',
+  isFavoris: externalIsFavoris,
+  onToggle: externalOnToggle,
+  isLoading: externalIsLoading
 }) => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
@@ -25,10 +32,15 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     setCurrentUser(getStoredUser());
   }, []);
 
-  const favorites = useFavorites({
+  // Utiliser les props externes si fournies, sinon utiliser le hook interne
+  const internalFavorites = useFavorites({
     campaignId,
     initialIsFavoris
   });
+
+  const isFavoris = externalIsFavoris !== undefined ? externalIsFavoris : internalFavorites.isFavoris;
+  const isLoading = externalIsLoading !== undefined ? externalIsLoading : internalFavorites.isLoading;
+  const toggleFavorite = externalOnToggle || internalFavorites.toggleFavorite;
 
   const getVariantStyles = () => {
     switch (variant) {
@@ -65,7 +77,9 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
 
   const styles = getVariantStyles();
 
-  if (!currentUser) {
+  // Si onToggle externe est fourni, l'utiliser même si l'utilisateur n'est pas connecté
+  // (le composant parent gère la vérification de connexion)
+  if (!currentUser && !externalOnToggle) {
     return (
       <button 
         onClick={() => {
@@ -85,14 +99,14 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
 
   return (
     <button 
-      onClick={favorites.toggleFavorite}
-      disabled={favorites.isLoading}
+      onClick={toggleFavorite}
+      disabled={isLoading}
       className={`${styles.base} ${
-        favorites.isFavoris ? styles.favori : styles.normal
-      } ${favorites.isLoading ? styles.disabled : ''} ${className}`}
+        isFavoris ? styles.favori : styles.normal
+      } ${isLoading ? styles.disabled : ''} ${className}`}
     >
-      <FiHeart className={`w-4 h-4 ${favorites.isFavoris ? 'fill-current' : ''}`} />
-      <span>{favorites.isFavoris ? 'Favori' : 'Suivre'}</span>
+      <FiHeart className={`w-4 h-4 ${isFavoris ? 'fill-current' : ''}`} />
+      <span>{isFavoris ? 'Favori' : 'Suivre'}</span>
     </button>
   );
 };
