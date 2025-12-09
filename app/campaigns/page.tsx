@@ -1,6 +1,8 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import CampaignCard from '@/components/ui/campaign-card';
+import CampaignCardSkeleton from '@/components/ui/CampaignCardSkeleton';
+import LoadingDots from '@/components/ui/LoadingDots';
 import { FiSearch, FiFilter, FiGrid, FiList, FiTrendingUp, FiClock, FiDollarSign } from 'react-icons/fi';
 import { CatalogApi } from '@/lib/api';
 
@@ -14,6 +16,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +46,7 @@ export default function CampaignsPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadCampaigns() {
-      setLoading(true);
+      setLoadingCampaigns(true);
       try {
         const params = new URLSearchParams();
         if (searchTerm) params.set('search', searchTerm);
@@ -60,7 +63,7 @@ export default function CampaignsPage() {
         console.error('Failed to load campaigns', e);
         if (!cancelled) setCampaigns([]);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadingCampaigns(false);
       }
     }
     loadCampaigns();
@@ -221,30 +224,48 @@ export default function CampaignsPage() {
         </div>
 
         {/* Campaigns Grid/List */}
-        {loading ? (
-          <div className="text-center text-gray-600 py-20">Chargement des campagnes...</div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredCampaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredCampaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
-        )}
-
-        {!loading && filteredCampaigns.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FiSearch className="w-12 h-12 text-gray-400" />
+        {loadingCampaigns ? (
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+              {[...Array(3)].map((_, index) => (
+                <CampaignCardSkeleton key={index} />
+              ))}
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune campagne trouvée</h3>
-            <p className="text-gray-600">Essayez de modifier vos critères de recherche</p>
-          </div>
+            <div className="text-center py-8">
+              <LoadingDots size="lg" color="orange" />
+              <p className="text-gray-600 mt-4 text-sm">Chargement des campagnes...</p>
+            </div>
+          </>
+        ) : (
+          <>
+            {viewMode === 'grid' ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredCampaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredCampaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} />
+                ))}
+              </div>
+            )}
+
+            {!loadingCampaigns && filteredCampaigns.length === 0 && (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiSearch className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune campagne trouvée</h3>
+                <p className="text-gray-600">
+                  {searchTerm || selectedCategory 
+                    ? 'Essayez de modifier vos critères de recherche'
+                    : 'Aucune campagne disponible pour le moment'}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,11 +1,12 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { UsersApi } from '@/lib/api';
-import { FiUsers, FiUserPlus, FiEdit, FiTrash2, FiRefreshCw, FiSearch, FiFilter, FiLoader } from 'react-icons/fi';
+import { UsersApi, AuthApi, UploadApi } from '@/lib/api';
+import { FiUsers, FiUserPlus, FiEdit, FiTrash2, FiRefreshCw, FiSearch, FiFilter, FiLoader, FiImage } from 'react-icons/fi';
 import { formatMoney } from '@/lib/utils';
 import SimplePagination from '@/components/ui/simple-pagination';
 import { useToast } from '@/hooks/use-toast';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { getStoredToken } from '@/lib/auth-client';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export default function AdminUsersPage() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const { toast } = useToast();
 
   const loadUsers = async () => {
@@ -74,9 +76,7 @@ export default function AdminUsersPage() {
   const handleUpdateUser = async (updatedData: any, captchaToken: string, adminPassword?: string) => {
     try {
       // Récupérer le token d'authentification
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       // Utiliser la nouvelle API avec protection reCAPTCHA
       const response = await fetch('/api/admin/users/update', {
@@ -188,13 +188,22 @@ export default function AdminUsersPage() {
             <h1 className="text-3xl font-bold text-white">Gestion des Utilisateurs</h1>
             <p className="text-gray-200 mt-2">Administration de tous les utilisateurs de la plateforme</p>
           </div>
-          <button
-            onClick={loadUsers}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-          >
-            <FiRefreshCw className="w-4 h-4" />
-            Actualiser
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              <FiUserPlus className="w-4 h-4" />
+              Ajouter un utilisateur
+            </button>
+            <button
+              onClick={loadUsers}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -464,6 +473,41 @@ export default function AdminUsersPage() {
             onSave={handleUpdateUser}
           />
         )}
+
+        {/* Add User Modal */}
+        {showAddModal && (
+          <AddUserModal
+            onClose={() => setShowAddModal(false)}
+            onSave={async (data, captchaToken, avatarFile) => {
+              try {
+                let avatarUrl: string | undefined;
+                if (avatarFile) {
+                  avatarUrl = await UploadApi.uploadFile(avatarFile);
+                }
+                const payload = {
+                  firstName: data.firstName,
+                  lastName: data.lastName,
+                  email: data.email,
+                  password: data.password,
+                  phone: data.phone || undefined,
+                  role: data.role,
+                  token: captchaToken,
+                  avatar: avatarUrl,
+                };
+                await AuthApi.register(payload as any);
+                toast({ title: 'Utilisateur créé', description: 'Le compte a été ajouté avec succès.' });
+                setShowAddModal(false);
+                await loadUsers();
+              } catch (err: any) {
+                toast({
+                  title: 'Erreur',
+                  description: err?.message || 'Impossible de créer l’utilisateur',
+                  variant: 'destructive',
+                });
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -650,6 +694,166 @@ function EditUserModal({ user, onClose, onSave }: { user: any; onClose: () => vo
               ) : (
                 <span>Sauvegarder</span>
               )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Add User Modal Component
+function AddUserModal({ onClose, onSave }: { onClose: () => void; onSave: (data: any, captchaToken: string, avatarFile?: File) => void }) {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'donateur' as 'donateur' | 'demandeur' | 'admin',
+  });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!captchaToken) {
+      alert('Veuillez vérifier le reCAPTCHA avant de continuer.');
+      return;
+    }
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.password.trim()) {
+      alert('Merci de remplir les champs obligatoires.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onSave(formData, captchaToken, avatarFile);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative">
+        <button
+          aria-label="Fermer"
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100"
+        >
+          ×
+        </button>
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">Ajouter un utilisateur</h3>
+        <p className="text-sm text-gray-600 mb-4">Créer un compte avec rôle, téléphone et avatar.</p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                placeholder="Ex: 0321234567"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="donateur">Donateur</option>
+                <option value="demandeur">Demandeur</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Avatar (optionnel)</label>
+              <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-orange-400 text-sm text-gray-600">
+                <FiImage className="w-4 h-4" />
+                <span>{avatarFile ? avatarFile.name : 'Choisir un fichier'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setAvatarFile(e.target.files?.[0])}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <ResponsiveReCAPTCHA
+              sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+              onChange={(token: string | null) => setCaptchaToken(token)}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Création...' : 'Créer'}
             </button>
           </div>
         </form>

@@ -540,9 +540,26 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                   <input type="password" required value={form.confirmPassword} onChange={(e)=>setForm({...form, confirmPassword: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Répétez le mot de passe" />
                 </div>
               </div>
-              <div className="flex items-center">
-                <input type="checkbox" checked={form.acceptTerms} onChange={(e)=>setForm({...form, acceptTerms: e.target.checked})} className="rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50" />
-                <span className="ml-2 text-sm text-gray-600">J'accepte les conditions d'utilisation</span>
+              <div className="flex items-start">
+                <input 
+                  type="checkbox" 
+                  checked={form.acceptTerms} 
+                  onChange={(e)=>setForm({...form, acceptTerms: e.target.checked})} 
+                  className="mt-0.5 rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50" 
+                  required
+                />
+                <span className="ml-2 text-sm text-gray-600">
+                  J'accepte les{' '}
+                  <Link 
+                    href="/terms" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:text-orange-700 underline font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    conditions d'utilisation
+                  </Link>
+                </span>
               </div>
               
               {/* Captcha pour l'inscription */}

@@ -3,8 +3,9 @@
 import type { User } from '@/types';
 
 const STORAGE_KEY = 'auth_user';
-const ENCRYPTION_KEY = 'tolotanana_secure_key_2024'; // En production, utilise une clé plus complexe
+const ENCRYPTION_KEY = 'tolotanana_secure_key_2024'; // En production, utilise une clé plus complexe et stockée côté serveur/variable d'env
 const ENCRYPTION_VERSION_KEY = 'auth_encryption_version';
+const CURRENT_ENCRYPTION_VERSION = 'v2'; // v2: clé stable (plus de clé basée sur le temps)
 
 export type StoredUser = User & { token?: string };
 
@@ -13,11 +14,9 @@ let cachedUser: StoredUser | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5000; // 5 secondes
 
-// Fonctions de chiffrement/déchiffrement simples
+// Fonctions de chiffrement/déchiffrement simples (clé stable)
 function generateKey(): string {
-  // Génère une clé basée sur l'horodatage et une clé fixe
-  const timestamp = Math.floor(Date.now() / (1000 * 60 * 60 * 24)); // Change chaque jour
-  return btoa(ENCRYPTION_KEY + timestamp.toString());
+  return btoa(ENCRYPTION_KEY);
 }
 
 function encrypt(text: string): string {
@@ -49,14 +48,14 @@ function decrypt(encryptedText: string): string {
   }
 }
 
-// Chiffre les données sensibles de l'utilisateur
+// Chiffre les données sensibles de l'utilisateur (inclut désormais le token)
 function encryptUserData(user: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone'];
+  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
   const encryptedUser = { ...user };
   
   sensitiveFields.forEach(field => {
-    if (encryptedUser[field as keyof StoredUser]) {
-      const value = encryptedUser[field as keyof StoredUser] as string;
+    const value = encryptedUser[field as keyof StoredUser] as string | undefined;
+    if (value) {
       (encryptedUser as any)[field] = encrypt(value);
     }
   });
@@ -64,9 +63,9 @@ function encryptUserData(user: StoredUser): StoredUser {
   return encryptedUser;
 }
 
-// Déchiffre les données sensibles de l'utilisateur
+// Déchiffre les données sensibles de l'utilisateur (inclut le token)
 function decryptUserData(encryptedUser: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone'];
+  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
   const decryptedUser = { ...encryptedUser };
   
   sensitiveFields.forEach(field => {
@@ -90,42 +89,25 @@ function decryptUserData(encryptedUser: StoredUser): StoredUser {
 
 export function getStoredUser(): StoredUser | null {
   if (typeof window === 'undefined') return null;
-  
+
   // Vérifier le cache d'abord
   const now = Date.now();
   if (cachedUser && (now - cacheTimestamp) < CACHE_DURATION) {
     return cachedUser;
   }
-  
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       cachedUser = null;
       return null;
     }
-    
     const parsed = JSON.parse(raw) as StoredUser;
-    
-    // Vérifier si les données sont déjà chiffrées (migration automatique)
-    if (isEncryptedData(parsed)) {
-      const decryptedUser = decryptUserData(parsed);
-      cachedUser = decryptedUser;
-      cacheTimestamp = now;
-      return decryptedUser;
-    } else {
-      // Données non chiffrées (ancien format) - les chiffrer et les sauvegarder
-      console.log('Migration automatique des données vers le format chiffré...');
-      const encryptedUser = encryptUserData(parsed);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(encryptedUser));
-      localStorage.setItem(ENCRYPTION_VERSION_KEY, 'v1');
-      
-      cachedUser = parsed; // Retourner les données originales pour cette fois
-      cacheTimestamp = now;
-      return parsed;
-    }
+    cachedUser = parsed;
+    cacheTimestamp = now;
+    return parsed;
   } catch (error) {
     console.error('Erreur lors de la lecture des données utilisateur:', error);
-    // En cas d'erreur, effacer les données corrompues
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(ENCRYPTION_VERSION_KEY);
     cachedUser = null;
@@ -137,7 +119,7 @@ export function getStoredUser(): StoredUser | null {
 function isEncryptedData(user: StoredUser): boolean {
   // Vérifier d'abord la version d'encryption
   const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
-  if (version === 'v1') return true;
+  if (version === CURRENT_ENCRYPTION_VERSION) return true;
   
   // Vérifications de fallback
   const email = user.email || '';
@@ -166,14 +148,12 @@ function emitAuthChanged() {
 
 export function setStoredUser(user: StoredUser): void {
   if (typeof window === 'undefined') return;
-  const encryptedUser = encryptUserData(user);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(encryptedUser));
-  localStorage.setItem(ENCRYPTION_VERSION_KEY, 'v1');
-  
-  // Mettre à jour le cache
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+  localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+
   cachedUser = user;
   cacheTimestamp = Date.now();
-  
+
   emitAuthChanged();
 }
 
@@ -198,32 +178,7 @@ export function clearStoredUser(): void {
 // Force la migration des données existantes vers le format chiffré
 export function migrateUserData(): void {
   if (typeof window === 'undefined') return;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    
-    const parsed = JSON.parse(raw) as StoredUser;
-    
-    // Si les données ne sont pas chiffrées, les chiffrer
-    if (!isEncryptedData(parsed)) {
-      console.log('Migration des données utilisateur vers le format chiffré...');
-      const encryptedUser = encryptUserData(parsed);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(encryptedUser));
-      localStorage.setItem(ENCRYPTION_VERSION_KEY, 'v1');
-      
-      // Mettre à jour le cache
-      cachedUser = parsed;
-      cacheTimestamp = Date.now();
-      
-      console.log('Migration terminée avec succès');
-    }
-  } catch (error) {
-    console.error('Erreur lors de la migration des données:', error);
-    // En cas d'erreur, effacer les données corrompues
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(ENCRYPTION_VERSION_KEY);
-    cachedUser = null;
-  }
+  // Plus de migration : on laisse les données en clair (compatible avec l'ancien comportement)
 }
 
 // Force le rechargement du cache (utile pour les tests)

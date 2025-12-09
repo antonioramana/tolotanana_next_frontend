@@ -33,6 +33,9 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [thankYouMessage, setThankYouMessage] = useState<string>('Merci pour votre don ! Votre contribution a été enregistrée.');
   const [platformFees, setPlatformFees] = useState<{ percentage: number; description?: string }>({ percentage: 5.0 });
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [optimisticAmount, setOptimisticAmount] = useState(0);
+  const [optimisticDonors, setOptimisticDonors] = useState(0);
+  const [selectedMobileProvider, setSelectedMobileProvider] = useState<'orange' | 'airtel' | 'mvola'>('orange');
   const [currentDonationsPage, setCurrentDonationsPage] = useState(1);
   const [currentUpdatesPage, setCurrentUpdatesPage] = useState(1);
   const [currentLatestDonationsPage, setCurrentLatestDonationsPage] = useState(1);
@@ -49,31 +52,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   useEffect(() => {
     setCurrentUser(getStoredUser());
     loadPlatformFees();
-    
-    // Vérifier s'il y a un popup en attente dans localStorage
-    const keys = Object.keys(localStorage);
-    const popupKeys = keys.filter(key => key.startsWith(`thank-you-popup-${campaign.id}`));
-    
-    if (popupKeys.length > 0) {
-      const latestKey = popupKeys.sort().pop();
-      if (latestKey) {
-        try {
-          const popupData = JSON.parse(localStorage.getItem(latestKey) || '{}');
-          const age = Date.now() - popupData.timestamp;
-          
-          // Si le popup a moins de 30 secondes, l'afficher
-          if (age < 30000 && popupData.show) {
-            setThankYouMessage(popupData.message || thankYouMessage);
-            setShowThankYouPopup(true);
-            localStorage.removeItem(latestKey);
-          } else {
-            localStorage.removeItem(latestKey);
-          }
-        } catch (error) {
-          console.error('Erreur lecture localStorage:', error);
-        }
-      }
-    }
   }, [campaign.id]);
 
   // Charger les informations bancaires de l'admin
@@ -157,15 +135,28 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
     return `${(amount / 1000).toFixed(0)}K Ar`;
   };
 
-  const currentAmount = typeof campaign.currentAmount === 'string' ? parseFloat(campaign.currentAmount) : campaign.currentAmount || 0;
-  const totalRaised = typeof campaign.totalRaised === 'string' ? parseFloat(campaign.totalRaised) : campaign.totalRaised || currentAmount;
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'mobile_money': return 'Mobile money';
+      case 'bank_account': return 'Virement bancaire';
+      case 'espece': return 'Espèces';
+      case 'card': return 'Carte bancaire';
+      default: return method || '—';
+    }
+  };
+
+  const baseCurrentAmount = typeof campaign.currentAmount === 'string' ? parseFloat(campaign.currentAmount) : campaign.currentAmount || 0;
+  const baseTotalRaised = typeof campaign.totalRaised === 'string' ? parseFloat(campaign.totalRaised) : campaign.totalRaised || baseCurrentAmount;
+  const displayCurrentAmount = baseCurrentAmount + optimisticAmount;
+  const displayTotalRaised = baseTotalRaised + optimisticAmount;
+  const displayTotalDonors = (campaign.totalDonors || 0) + optimisticDonors;
   const targetAmount = typeof campaign.targetAmount === 'string' ? parseFloat(campaign.targetAmount) : campaign.targetAmount || 0;
   const rating = typeof campaign.rating === 'string' ? parseFloat(campaign.rating) : (campaign.rating || 0);
   const deadlineDate = new Date(campaign.deadline);
   const daysLeft = Math.ceil((deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   const isExpired = deadlineDate < new Date();
   const isInactive = campaign.status !== 'active' || isExpired;
-  const progressPercentage = targetAmount > 0 ? Math.min((totalRaised / targetAmount) * 100, 100) : 0;
+  const progressPercentage = targetAmount > 0 ? Math.min((displayTotalRaised / targetAmount) * 100, 100) : 0;
 
   const otherImages = Array.isArray(campaign.images) ? campaign.images.slice(1) : [];
   const hasVideo = Boolean((campaign as any).video);
@@ -278,21 +269,10 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
       
       // Afficher le popup de remerciement
       setShowThankYouPopup(true);
-      
-      // Sauvegarder dans localStorage pour persister après rafraîchissement
-      const popupKey = `thank-you-popup-${campaign.id}-${Date.now()}`;
-      localStorage.setItem(popupKey, JSON.stringify({
-        show: true,
-        message: thankYouMessage,
-        timestamp: Date.now()
-      }));
-      
-      // Rafraîchir les données après un délai pour éviter la réinitialisation
-      setTimeout(() => {
-        if (onRefetch) {
-          onRefetch();
-        }
-      }, 3000);
+
+      // Mettre à jour l'affichage local sans rechargement
+      setOptimisticAmount(prev => prev + amountNum);
+      setOptimisticDonors(prev => prev + 1);
       
       setIsSubmitting(false);
       
@@ -369,7 +349,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                 <div className="flex items-center flex-wrap gap-6 text-sm text-gray-600 mb-6">
                   <div className="flex items-center">
                     <FiUsers className="w-4 h-4 mr-1" />
-                    <span>{campaign.totalDonors || 0} donateurs</span>
+                    <span>{displayTotalDonors} donateurs</span>
                   </div>
                   <div className="flex items-center">
                     <FiCalendar className="w-4 h-4 mr-1" />
@@ -398,15 +378,15 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                       style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-lg font-semibold mt-3">
-                    <span className="text-orange-600">{formatMoney(totalRaised)}</span>
-                    <span className="text-gray-600">sur {formatMoney(targetAmount)}</span>
-                  </div>
-                  {totalRaised > currentAmount && (
+          <div className="flex justify-between text-lg font-semibold mt-3">
+            <span className="text-orange-600">{formatMoney(displayTotalRaised)}</span>
+            <span className="text-gray-600">sur {formatMoney(targetAmount)}</span>
+          </div>
+                  {displayTotalRaised > displayCurrentAmount && (
                     <div className="mt-2 text-sm text-gray-600">
-                      <span className="text-green-600">Disponible: {formatMoney(currentAmount)}</span>
+                      <span className="text-green-600">Disponible: {formatMoney(displayCurrentAmount)}</span>
                       <span className="mx-2">•</span>
-                      <span className="text-blue-600">Total collecté: {formatMoney(totalRaised)}</span>
+                      <span className="text-blue-600">Total collecté: {formatMoney(displayTotalRaised)}</span>
                     </div>
                   )}
                 </div>
@@ -588,14 +568,14 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
               <div className="text-center mb-6">
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatMoney(currentAmount)}
+                  {formatMoney(displayCurrentAmount)}
                 </div>
                 <div className="text-gray-600">collectés sur {formatMoney(targetAmount)}</div>
                 {campaign.stats?.pendingAmount > 0 && (
                   <div className="text-sm text-yellow-700 mt-1">{formatMoney(campaign.stats.pendingAmount)} en attente de validation</div>
                 )}
                 <div className="text-sm text-gray-500 mt-1">
-                  {campaign.totalDonors || 0} donateurs • {daysLeft > 0 ? `${daysLeft} jours restants` : 'Terminée'}
+                  {displayTotalDonors} donateurs • {daysLeft > 0 ? `${daysLeft} jours restants` : 'Terminée'}
                 </div>
               </div>
 
@@ -711,7 +691,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                                   hour: '2-digit',
                                   minute: '2-digit',
                                   second: '2-digit'
-                                })} · {donation.paymentMethod}
+                                })} · {getPaymentMethodText(donation.paymentMethod)}
                               </p>
                               {donation.message && (
                                 <p className="text-xs text-gray-600 mt-1 line-clamp-2">"{donation.message}"</p>
@@ -720,8 +700,20 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                           </div>
                           <div className="text-right ml-3 flex-shrink-0">
                             <p className="font-semibold text-gray-900">{formatMoney(amount)}</p>
-                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${donation.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                              {donation.status}
+                            <span
+                              className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                donation.status === 'completed'
+                                  ? 'bg-green-100 text-green-700'
+                                  : donation.status === 'failed'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                              }`}
+                            >
+                              {donation.status === 'completed'
+                                ? 'Validé'
+                                : donation.status === 'failed'
+                                  ? 'Rejeté'
+                                  : 'En attente'}
                             </span>
                           </div>
                         </div>
@@ -799,7 +791,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
       {showDonationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="relative bg-white rounded-xl w-full max-w-2xl p-6 max-h-[85vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl w-full max-w-2xl p-6 max-h-[85vh] overflow-y-auto shadow-2xl shadow-orange-200 border border-orange-100">
             <button
               aria-label="Fermer"
               onClick={() => setShowDonationModal(false)}
@@ -811,26 +803,26 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Montant du don (Ar)
                 </label>
                 <input
                   type="number"
                   value={donationAmount}
                   onChange={(e) => setDonationAmount(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="Ex: 50000"
+                  className="w-full px-4 py-3 border border-orange-200 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder-gray-400"
+                  placeholder="Ex: 50 000"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Message (optionnel)
                 </label>
                 <textarea
                   value={donationMessage}
                   onChange={(e) => setDonationMessage(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-orange-200 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder-gray-400"
                   rows={3}
                   placeholder="Laissez un message d'encouragement..."
                 />
@@ -838,45 +830,59 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
               {!isAnonymous && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Nom du donateur
                   </label>
                   <input
                     type="text"
                     value={donorName}
                     onChange={(e) => setDonorName(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-orange-200 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-400 placeholder-gray-400"
                     placeholder={currentUser ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() : 'Ex: Jean Dupont'}
                   />
                 </div>
               )}
-
+              <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id="anonymous"
+                                checked={isAnonymous}
+                                onChange={(e) => setIsAnonymous(e.target.checked)}
+                                className="rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50"
+                              />
+                              <label htmlFor="anonymous" className="ml-2 text-sm text-gray-700">
+                                Don anonyme
+                              </label>
+                            </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-800 mb-3">
                   Méthode de paiement
                 </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="bank_account">Virement bancaire</option>
-                  <option value="espece">Espèces</option>
-                </select>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="anonymous"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="rounded border-gray-300 text-orange-600 shadow-sm focus:border-orange-300 focus:ring focus:ring-orange-200 focus:ring-opacity-50"
-                />
-                <label htmlFor="anonymous" className="ml-2 text-sm text-gray-700">
-                  Don anonyme
-                </label>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'mobile_money', label: 'Mobile Money', desc: 'Orange / Airtel / MVola', color: 'from-orange-500 to-yellow-400' },
+                    { id: 'bank_account', label: 'Virement bancaire', desc: 'Compte bancaire', color: 'from-blue-500 to-indigo-500' },
+                    { id: 'espece', label: 'Espèces', desc: 'Paiement en main propre', color: 'from-gray-500 to-gray-600' },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(m.id)}
+                      className={`text-left p-3 rounded-xl border transition-all ${
+                        paymentMethod === m.id
+                          ? 'border-orange-500 shadow-lg shadow-orange-100 bg-gradient-to-r ' + m.color + ' text-white'
+                          : 'border-gray-200 hover:border-orange-200 bg-white'
+                      }`}
+                    >
+                      <div className="text-sm font-semibold flex items-center gap-2">
+                        <span>{m.label}</span>
+                      </div>
+                      <div className={`text-xs mt-1 ${paymentMethod === m.id ? 'text-white/80' : 'text-gray-500'}`}>
+                        {m.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -911,44 +917,49 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                     <div className="border rounded-xl p-4 bg-orange-50 border-orange-200">
                       <h4 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
                         <FiHeart className="w-4 h-4 text-orange-600" />
-                        Informations de paiement - {paymentMethod === 'mobile_money' ? 'Mobile Money' : 
-                        paymentMethod === 'bank_account' ? 'Virement bancaire' : 'Paiement'}
+                        Informations de paiement - {paymentMethod === 'mobile_money' ? 'Mobile Money' : 'Virement bancaire'}
                       </h4>
-                      <div className="space-y-3 text-xs sm:text-sm">
+                      <div className="grid sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                         {filteredBankInfos.map((bankInfo, index) => (
-                          <div key={bankInfo.id || index} className="bg-white rounded-lg p-3 border border-orange-200">
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-gray-600 font-medium">
-                                {bankInfo.type === 'mobile_money' ? 'Mobile Money' : 'Compte bancaire'}
-                              </span>
+                          <div key={bankInfo.id || index} className="bg-white rounded-lg p-3 border border-orange-200 shadow-sm">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="space-y-0.5">
+                                <div className="text-gray-600 text-[12px] uppercase tracking-wide">
+                                  {bankInfo.type === 'mobile_money' ? 'Mobile Money' : 'Compte bancaire'}
+                                </div>
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {bankInfo.bankName || (bankInfo.type === 'mobile_money' ? 'Compte Mobile' : 'Compte bancaire')}
+                                </div>
+                              </div>
                               {bankInfo.isDefault && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                                <span className="px-2 py-1 bg-green-100 text-green-700 text-[11px] rounded-full">
                                   Par défaut
                                 </span>
                               )}
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Titulaire</span>
                                 <span className="font-medium text-gray-900">{bankInfo.accountName}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">Numéro</span>
-                                <span className="font-medium text-gray-900 font-mono">{bankInfo.accountNumber}</span>
+                                <span className="text-gray-600">{bankInfo.type === 'mobile_money' ? 'Numéro' : 'IBAN / RIB'}</span>
+                                <span className="font-semibold text-gray-900 font-mono">{bankInfo.accountNumber}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-600">
-                                  {bankInfo.type === 'mobile_money' ? 'Fournisseur' : 'Banque'}
-                                </span>
-                                <span className="font-medium text-gray-900">{bankInfo.provider}</span>
+                                <span className="text-gray-600">{bankInfo.type === 'mobile_money' ? 'Opérateur' : 'Banque'}</span>
+                                <span className="font-medium text-gray-900">{bankInfo.provider || '—'}</span>
                               </div>
+                              {bankInfo.instructions && (
+                                <div className="text-[11px] text-gray-500 mt-1">Note : {bankInfo.instructions}</div>
+                              )}
                             </div>
                           </div>
                         ))}
-                        <p className="text-xs text-gray-600 mt-2">
-                          💡 Utilisez ces informations pour effectuer un virement vers l'administrateur
-                        </p>
                       </div>
+                      <p className="text-xs text-gray-600 mt-3">
+                        💡 Utilisez ces informations pour effectuer votre paiement vers l'administrateur.
+                      </p>
                     </div>
                   </div>
                 );
@@ -983,11 +994,11 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             {/* Informations importantes sur le processus */}
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="font-semibold text-blue-900 mb-2 text-sm">ℹ️ Informations importantes</h4>
-              <div className="text-xs text-blue-800 space-y-1">
-                <p>• Votre don sera <strong>en attente de validation</strong> par l'administrateur</p>
-                <p>• Une fois validé, le montant sera ajouté au total de la campagne</p>
-                <p>• Des <strong>frais de plateforme de {platformFees.percentage}%</strong> sont appliqués</p>
-                <p>• Vous recevrez une confirmation par email</p>
+              <div className="text-xs text-blue-800 space-y-1.5">
+                <p>• Votre don est <strong>ajouté immédiatement</strong>.</p>
+                <p>• Le total de la campagne est mis à jour en <strong>temps réel</strong>.</p>
+                <p>• Des <strong>frais de plateforme de {platformFees.percentage}%</strong> sont appliqués.</p>
+                <p>• Vous recevrez une confirmation par email.</p>
               </div>
             </div>
 
@@ -1008,7 +1019,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               </button>
               <button
                 onClick={handleDonation}
-                disabled={!donationAmount || isInactive || isSubmitting}
+                disabled={!donationAmount || isInactive || isSubmitting || !captchaToken}
                 className={`flex-1 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isInactive ? 'bg-gray-400' : 'bg-orange-500 hover:bg-orange-600'}`}
               >
                 {isSubmitting ? 'Traitement...' : 'Continuer'}

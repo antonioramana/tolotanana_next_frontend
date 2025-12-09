@@ -94,6 +94,12 @@ export default function Home() {
     return String(n);
   }
 
+  const ratingCount = testimonials.length;
+  const averageRating = ratingCount > 0
+    ? testimonials.reduce((sum, t) => sum + (t.rating || 0), 0) / ratingCount
+    : 0;
+  const hasRatings = ratingCount > 0 && averageRating > 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -319,10 +325,12 @@ export default function Home() {
               <FiStar className="w-8 h-8 text-orange-600" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Note moyenne de 4.9/5
+              {hasRatings ? `Note moyenne de ${averageRating.toFixed(1)}/5` : 'Des utilisateurs satisfaits'}
             </h3>
             <p className="text-gray-600">
-              Basée sur plus de 2 000 avis de nos utilisateurs
+              {hasRatings
+                ? `Basée sur ${formatNumber(ratingCount)} avis vérifiés`
+                : 'Partagez votre expérience pour aider la communauté.'}
             </p>
           </div>
         </div>
@@ -338,7 +346,7 @@ export default function Home() {
             Rejoignez des milliers de personnes qui utilisent TOLOTANANA pour transformer leurs idées en réalité.
           </p>
           <Link
-            href="/register"
+            href={currentUser ? "/campaigns" : "/register"}
             className="inline-flex items-center bg-white text-orange-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-50 transition-colors shadow-lg"
           >
             Commencer maintenant

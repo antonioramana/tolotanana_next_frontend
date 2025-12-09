@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FiEye, FiCheck, FiX, FiSearch, FiFilter, FiDollarSign, FiUser, FiCalendar, FiLoader } from 'react-icons/fi';
+import { FiEye, FiSearch, FiFilter, FiDollarSign, FiUser, FiCalendar, FiLoader, FiCheck } from 'react-icons/fi';
 import { DonationsApi, CatalogApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { getStoredToken } from '@/lib/auth-client';
 
 export default function AdminDonationsPage() {
   const [donations, setDonations] = useState<any[]>([]);
@@ -20,12 +20,7 @@ export default function AdminDonationsPage() {
   const { toast } = useToast();
   
   // États pour le chargement et reCAPTCHA
-  const [validatingDonations, setValidatingDonations] = useState<Set<string>>(new Set());
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [selectedDonation, setSelectedDonation] = useState<any>(null);
-  const [validationStatus, setValidationStatus] = useState<'completed' | 'failed' | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadDonations();
@@ -96,6 +91,16 @@ export default function AdminDonationsPage() {
     return `${num.toLocaleString('fr-FR')} Ar`;
   };
 
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'mobile_money': return 'Mobile money';
+      case 'bank_account': return 'Virement bancaire';
+      case 'espece': return 'Espèces';
+      case 'card': return 'Carte bancaire';
+      default: return method || '—';
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -116,39 +121,11 @@ export default function AdminDonationsPage() {
 
   // No client-side filtering needed since we're using server-side pagination
 
-  const handleValidateDonation = async (donationId: string, status: 'completed' | 'failed') => {
-    // Trouver le don sélectionné
-    const donation = donations.find(d => d.id === donationId);
-    if (!donation) return;
-
-    setSelectedDonation(donation);
-    setValidationStatus(status);
-    setShowValidationModal(true);
-  };
-
-  const confirmValidation = async () => {
-    if (!selectedDonation || !validationStatus || !captchaToken) {
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez vérifier le reCAPTCHA avant de continuer.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleStatusChange = async (donation: any, status: 'completed' | 'failed' | 'pending') => {
+    setStatusUpdatingId(donation.id);
     try {
-      // Activer l'état de chargement global
-      setIsValidating(true);
-      
-      // Ajouter le don à la liste des dons en cours de validation
-      setValidatingDonations(prev => new Set(prev).add(selectedDonation.id));
-      
-      // Récupérer le token d'authentification
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
-      // Utiliser la nouvelle API avec protection reCAPTCHA
       const response = await fetch('/api/admin/donations/validate', {
         method: 'POST',
         headers: {
@@ -156,46 +133,47 @@ export default function AdminDonationsPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          donationId: selectedDonation.id,
-          status: validationStatus,
-          token: captchaToken
+          donationId: donation.id,
+          status,
         }),
       });
 
+      const text = await response.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = null;
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la validation du don');
+        const message = data?.message || response.statusText || 'Erreur lors de la mise à jour du statut';
+        console.error('Erreur maj statut don', { status: response.status, message, backendBody: data?.backendBody ?? data ?? text });
+        toast({
+          title: `Erreur (${response.status})`,
+          description: message,
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
         title: 'Succès',
-        description: `Don ${validationStatus === 'completed' ? 'validé' : 'refusé'} avec succès`,
+        description: `Statut mis à jour : ${getStatusText(status)}`,
       });
 
-      // Fermer le modal et recharger les données
-      setShowValidationModal(false);
-      setSelectedDonation(null);
-      setValidationStatus(null);
-      setCaptchaToken(null);
       await loadDonations();
     } catch (error: any) {
       toast({
         title: 'Erreur',
-        description: error.message || 'Erreur lors de la validation du don',
+        description: error.message || 'Impossible de mettre à jour le statut',
         variant: 'destructive',
       });
     } finally {
-      // Désactiver l'état de chargement global
-      setIsValidating(false);
-      
-      // Retirer le don de la liste des dons en cours de validation
-      setValidatingDonations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(selectedDonation.id);
-        return newSet;
-      });
+      setStatusUpdatingId(null);
     }
   };
+
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -389,14 +367,21 @@ export default function AdminDonationsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white capitalize">
-                        {donation.paymentMethod}
+                    <div className="text-sm text-white">
+                      {getPaymentMethodText(donation.paymentMethod)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(donation.status)}`}>
-                        {getStatusText(donation.status)}
-                      </span>
+                      <select
+                        value={donation.status}
+                        onChange={(e) => handleStatusChange(donation, e.target.value as 'completed' | 'failed' | 'pending')}
+                        className="bg-gray-900 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        disabled={statusUpdatingId === donation.id}
+                      >
+                        <option value="pending">En attente</option>
+                        <option value="completed">Validé</option>
+                        <option value="failed">Rejeté</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-white max-w-xs truncate">
@@ -415,34 +400,8 @@ export default function AdminDonationsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
-                        {donation.status === 'pending' && (
-                          <>
-                            {validatingDonations.has(donation.id) ? (
-                              <div className="flex items-center space-x-2 bg-orange-50 px-2 py-1 rounded-lg">
-                                <FiLoader className="w-4 h-4 animate-spin text-orange-500" />
-                                <span className="text-xs text-orange-700 font-medium">Validation en cours...</span>
-                              </div>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleValidateDonation(donation.id, 'completed')}
-                                  className="text-green-600 hover:text-green-900 p-1 rounded disabled:opacity-50"
-                                  title="Valider le don"
-                                  disabled={validatingDonations.has(donation.id)}
-                                >
-                                  <FiCheck className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleValidateDonation(donation.id, 'failed')}
-                                  className="text-red-600 hover:text-red-900 p-1 rounded disabled:opacity-50"
-                                  title="Refuser le don"
-                                  disabled={validatingDonations.has(donation.id)}
-                                >
-                                  <FiX className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </>
+                        {statusUpdatingId === donation.id && (
+                          <FiLoader className="w-4 h-4 animate-spin text-orange-500" />
                         )}
                         <button
                           onClick={() => window.open(`/campaigns/${donation.campaignId}`, '_blank')}
@@ -504,8 +463,8 @@ export default function AdminDonationsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-200">Méthode:</span>
-                  <span className="text-sm text-white capitalize">
-                    {donation.paymentMethod}
+                  <span className="text-sm text-white">
+                    {getPaymentMethodText(donation.paymentMethod)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -531,36 +490,21 @@ export default function AdminDonationsPage() {
                 >
                   <FiEye className="w-5 h-5" />
                 </button>
-                
-                {donation.status === 'pending' && (
-                  <div className="flex items-center space-x-2">
-                    {validatingDonations.has(donation.id) ? (
-                      <div className="flex items-center space-x-2 bg-orange-50 px-3 py-2 rounded-lg">
-                        <FiLoader className="w-4 h-4 animate-spin text-orange-500" />
-                        <span className="text-xs text-orange-700 font-medium">Validation en cours...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleValidateDonation(donation.id, 'completed')}
-                          className="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                          disabled={validatingDonations.has(donation.id)}
-                        >
-                          <FiCheck className="w-4 h-4 inline mr-1" />
-                          Valider
-                        </button>
-                        <button
-                          onClick={() => handleValidateDonation(donation.id, 'failed')}
-                          className="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                          disabled={validatingDonations.has(donation.id)}
-                        >
-                          <FiX className="w-4 h-4 inline mr-1" />
-                          Refuser
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center space-x-2">
+                  {statusUpdatingId === donation.id && (
+                    <FiLoader className="w-4 h-4 animate-spin text-orange-500" />
+                  )}
+                  <select
+                    value={donation.status}
+                    onChange={(e) => handleStatusChange(donation, e.target.value as 'completed' | 'failed' | 'pending')}
+                    className="bg-gray-900 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={statusUpdatingId === donation.id}
+                  >
+                    <option value="pending">En attente</option>
+                    <option value="completed">Validé</option>
+                    <option value="failed">Rejeté</option>
+                  </select>
+                </div>
               </div>
             </div>
           );
@@ -654,129 +598,6 @@ export default function AdminDonationsPage() {
         </div>
       )}
 
-      {/* Overlay de chargement global */}
-      {isValidating && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl shadow-2xl p-8 max-w-sm w-full mx-4">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiLoader className="w-8 h-8 text-orange-600 animate-spin" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Validation en cours
-              </h3>
-              <p className="text-gray-200">
-                Veuillez patienter pendant que nous validons le don...
-              </p>
-              <div className="mt-4">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de confirmation de validation */}
-      {showValidationModal && selectedDonation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl shadow-2xl max-w-md w-full">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Confirmer la validation du don
-              </h3>
-              
-              <div className="mb-6">
-                <div className="bg-gray-900 rounded-lg p-4 mb-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-300">Donateur:</span>
-                      <p className="font-medium">{selectedDonation.donorName || 'Anonyme'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-300">Montant:</span>
-                      <p className="font-medium">{formatAmount(selectedDonation.amount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-300">Campagne:</span>
-                      <p className="font-medium">{getCampaignTitle(selectedDonation.campaignId)}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-300">Méthode:</span>
-                      <p className="font-medium">{selectedDonation.paymentMethod}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className={`p-4 rounded-lg ${
-                  validationStatus === 'completed' 
-                    ? 'bg-green-50 border border-green-200' 
-                    : 'bg-red-50 border border-red-200'
-                }`}>
-                  <p className={`font-medium ${
-                    validationStatus === 'completed' ? 'text-green-800' : 'text-red-800'
-                  }`}>
-                    {validationStatus === 'completed' 
-                      ? '✅ Valider ce don' 
-                      : '❌ Refuser ce don'
-                    }
-                  </p>
-                  <p className={`text-sm mt-1 ${
-                    validationStatus === 'completed' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {validationStatus === 'completed' 
-                      ? 'Le montant sera ajouté au total de la campagne' 
-                      : 'Le don sera marqué comme échoué'
-                    }
-                  </p>
-                </div>
-              </div>
-
-              {/* reCAPTCHA */}
-              <div className="flex justify-center mb-6">
-                <ResponsiveReCAPTCHA
-                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
-                  onChange={(token: string | null) => setCaptchaToken(token)}
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowValidationModal(false);
-                    setSelectedDonation(null);
-                    setValidationStatus(null);
-                    setCaptchaToken(null);
-                  }}
-                  disabled={isValidating}
-                  className="px-4 py-2 text-gray-300 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={confirmValidation}
-                  disabled={!captchaToken || isValidating}
-                  className={`px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 ${
-                    validationStatus === 'completed'
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-red-600 hover:bg-red-700'
-                  }`}
-                >
-                  {isValidating ? (
-                    <>
-                      <FiLoader className="w-4 h-4 animate-spin" />
-                      <span>Validation en cours...</span>
-                    </>
-                  ) : (
-                    <span>{validationStatus === 'completed' ? 'Valider le don' : 'Refuser le don'}</span>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

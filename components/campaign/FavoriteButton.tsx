@@ -85,7 +85,7 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
         onClick={() => {
           toast({
             title: 'Connexion requise',
-            description: 'Veuillez vous connecter pour ajouter aux favoris',
+            description: 'Veuillez vous connecter pour suivre une campagne',
             variant: 'destructive',
           });
         }}
@@ -106,7 +106,7 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
       } ${isLoading ? styles.disabled : ''} ${className}`}
     >
       <FiHeart className={`w-4 h-4 ${isFavoris ? 'fill-current' : ''}`} />
-      <span>{isFavoris ? 'Favori' : 'Suivre'}</span>
+      <span>{isFavoris ? 'Suivi' : 'Suivre'}</span>
     </button>
   );
 };

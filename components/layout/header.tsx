@@ -85,7 +85,7 @@ export default function Header({ user: userProp }: { user?: any }) {
             </Link>
             {user && (
               <Link href="/dashboard/favorites" className="inline-flex items-center text-gray-700 hover:text-orange-600 font-medium transition-colors">
-                <FiHeart className="w-4 h-4 mr-1" /> Favoris
+                <FiHeart className="w-4 h-4 mr-1" /> Suivi
               </Link>
             )}
             
@@ -199,7 +199,7 @@ export default function Header({ user: userProp }: { user?: any }) {
                   href="/dashboard/favorites"
                   className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-orange-600"
                 >
-                  Favoris
+                  Suivi
                 </Link>
               )}
               

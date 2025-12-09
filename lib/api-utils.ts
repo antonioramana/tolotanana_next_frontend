@@ -1,4 +1,6 @@
 // Utilitaire pour les appels API avec authentification
+import { getStoredToken } from './auth-client';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
 
 export function getAuthHeaders(): Record<string, string> {
@@ -6,8 +8,7 @@ export function getAuthHeaders(): Record<string, string> {
   
   if (typeof window !== 'undefined') {
     try {
-      const authUser = localStorage.getItem('auth_user');
-      const token = authUser ? JSON.parse(authUser).token : null;
+      const token = getStoredToken();
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }

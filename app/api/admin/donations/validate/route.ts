@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRecaptcha } from '@/lib/verifyRecaptcha';
 
 export async function POST(req: NextRequest) {
   try {
     console.log('🔍 Validation don - Début de la requête');
     const body = await req.json();
-    const { donationId, status, token } = body;
+    const { donationId, status } = body;
     
-    console.log('📝 Données reçues:', { donationId, status, hasToken: !!token });
+    console.log('📝 Données reçues:', { donationId, status });
 
     if (!donationId || !status) {
       console.log('❌ Données manquantes');
@@ -17,35 +16,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['completed', 'failed'].includes(status)) {
+    if (!['completed', 'failed', 'pending'].includes(status)) {
       return NextResponse.json(
         { message: 'Statut de validation invalide' },
-        { status: 400 }
-      );
-    }
-
-    // Vérifier reCAPTCHA
-    if (!token) {
-      return NextResponse.json(
-        { message: 'Vérification reCAPTCHA requise' },
-        { status: 400 }
-      );
-    }
-
-    // Créer un objet request compatible avec verifyRecaptcha
-    const mockReq = {
-      body: { token },
-      query: {}
-    } as any;
-
-    const captcha = await verifyRecaptcha(mockReq);
-
-    if (!captcha.success || (captcha.score !== undefined && captcha.score < 0.5)) {
-      return NextResponse.json(
-        {
-          message: "reCAPTCHA verification failed",
-          error: captcha.errorCodes || [],
-        },
         { status: 400 }
       );
     }
@@ -71,27 +44,48 @@ export async function POST(req: NextRequest) {
     
     console.log('🚀 Appel backend:', { url: backendUrl, method: 'PATCH', data: validationData });
     
-    const response = await fetch(backendUrl, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-      },
-      body: JSON.stringify(validationData),
-    });
+    let response: Response;
+    try {
+      response = await fetch(backendUrl, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
+        body: JSON.stringify(validationData),
+      });
+    } catch (fetchErr: any) {
+      console.error('❌ Appel backend impossible:', fetchErr);
+      return NextResponse.json(
+        { message: fetchErr?.message || 'Backend injoignable' },
+        { status: 500 }
+      );
+    }
 
     console.log('📡 Réponse backend:', { status: response.status, ok: response.ok });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.log('❌ Erreur backend:', errorData);
-      throw new Error(errorData.message || 'Erreur lors de la validation du don');
+    const text = await response.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
     }
 
-    const result = await response.json();
-    console.log('✅ Succès backend:', result);
-    
-    return NextResponse.json(result);
+    if (!response.ok) {
+      console.log('❌ Erreur backend:', { status: response.status, statusText: response.statusText, body: text });
+      return NextResponse.json(
+        {
+          message: json?.message || response.statusText || 'Erreur lors de la validation du don',
+          status: response.status,
+          backendBody: json || text || null,
+        },
+        { status: response.status }
+      );
+    }
+
+    console.log('✅ Succès backend:', json);
+    return NextResponse.json(json ?? {});
   } catch (error: any) {
     console.error('Erreur validation don:', error);
     return NextResponse.json(

@@ -43,7 +43,7 @@ const FavoriteToggle: React.FC<FavoriteToggleProps> = ({
         }
         ${className}
       `}
-      aria-label={isFavoris ? "Retirer des favoris" : "Ajouter aux favoris"}
+      aria-label={isFavoris ? "Ne plus suivre" : "Suivre cette campagne"}
     >
       <Heart
         className={`${iconSizeClasses[size]} transition-colors duration-300 ${
