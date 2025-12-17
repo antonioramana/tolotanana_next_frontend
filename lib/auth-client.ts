@@ -1,11 +1,13 @@
 'use client';
 
 import type { User } from '@/types';
+import CryptoJS from 'crypto-js';
 
 const STORAGE_KEY = 'auth_user';
-const ENCRYPTION_KEY = 'tolotanana_secure_key_2024'; // En production, utilise une clé plus complexe et stockée côté serveur/variable d'env
+// En production, utilise une clé plus complexe et stockée côté serveur/variable d'env
+const ENCRYPTION_KEY = 'tolotanana_secure_key_2024_aes256_encryption';
 const ENCRYPTION_VERSION_KEY = 'auth_encryption_version';
-const CURRENT_ENCRYPTION_VERSION = 'v2'; // v2: clé stable (plus de clé basée sur le temps)
+const CURRENT_ENCRYPTION_VERSION = 'v3'; // v3: AES-256 via CryptoJS
 
 export type StoredUser = User & { token?: string };
 
@@ -14,77 +16,72 @@ let cachedUser: StoredUser | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5000; // 5 secondes
 
-// Fonctions de chiffrement/déchiffrement simples (clé stable)
-function generateKey(): string {
-  return btoa(ENCRYPTION_KEY);
-}
-
+// Fonctions de chiffrement/déchiffrement AES-256 via CryptoJS
+/**
+ * Chiffre une chaîne de caractères en utilisant AES-256
+ * @param text - Texte à chiffrer
+ * @returns Texte chiffré en base64
+ */
 function encrypt(text: string): string {
   try {
-    const key = generateKey();
-    let encrypted = '';
-    for (let i = 0; i < text.length; i++) {
-      const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-      encrypted += String.fromCharCode(charCode);
-    }
-    return btoa(encrypted);
-  } catch {
+    const encrypted = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY).toString();
+    return encrypted;
+  } catch (error) {
+    console.error('Erreur lors du chiffrement:', error);
     return text; // Retourne le texte original en cas d'erreur
   }
 }
 
+/**
+ * Déchiffre une chaîne de caractères chiffrée avec AES-256
+ * @param encryptedText - Texte chiffré en base64
+ * @returns Texte déchiffré
+ */
 function decrypt(encryptedText: string): string {
   try {
-    const key = generateKey();
-    const text = atob(encryptedText);
-    let decrypted = '';
-    for (let i = 0; i < text.length; i++) {
-      const charCode = text.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-      decrypted += String.fromCharCode(charCode);
+    const decrypted = CryptoJS.AES.decrypt(encryptedText, ENCRYPTION_KEY);
+    const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    // Si le déchiffrement échoue, decryptedText sera vide
+    if (!decryptedText) {
+      throw new Error('Échec du déchiffrement');
     }
-    return decrypted;
-  } catch {
+    
+    return decryptedText;
+  } catch (error) {
+    console.error('Erreur lors du déchiffrement:', error);
     return encryptedText; // Retourne le texte original en cas d'erreur
   }
 }
 
-// Chiffre les données sensibles de l'utilisateur (inclut désormais le token)
-function encryptUserData(user: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
-  const encryptedUser = { ...user };
-  
-  sensitiveFields.forEach(field => {
-    const value = encryptedUser[field as keyof StoredUser] as string | undefined;
-    if (value) {
-      (encryptedUser as any)[field] = encrypt(value);
-    }
-  });
-  
-  return encryptedUser;
+/**
+ * Chiffre toutes les données utilisateur avant stockage
+ * @param user - Données utilisateur à chiffrer
+ * @returns Chaîne JSON chiffrée
+ */
+function encryptUserData(user: StoredUser): string {
+  try {
+    const jsonString = JSON.stringify(user);
+    return encrypt(jsonString);
+  } catch (error) {
+    console.error('Erreur lors du chiffrement des données utilisateur:', error);
+    throw error;
+  }
 }
 
-// Déchiffre les données sensibles de l'utilisateur (inclut le token)
-function decryptUserData(encryptedUser: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
-  const decryptedUser = { ...encryptedUser };
-  
-  sensitiveFields.forEach(field => {
-    if (decryptedUser[field as keyof StoredUser]) {
-      const value = decryptedUser[field as keyof StoredUser] as string;
-      try {
-        const decryptedValue = decrypt(value);
-        // Vérifier que le déchiffrement a fonctionné (pas d'erreur)
-        if (decryptedValue && decryptedValue !== value) {
-          (decryptedUser as any)[field] = decryptedValue;
-        }
-      } catch (error) {
-        console.warn(`Erreur lors du déchiffrement du champ ${field}:`, error);
-        // Garder la valeur originale en cas d'erreur
-      }
-    }
-  });
-  
-  return decryptedUser;
+/**
+ * Déchiffre les données utilisateur depuis le stockage
+ * @param encryptedData - Données chiffrées
+ * @returns Données utilisateur déchiffrées
+ */
+function decryptUserData(encryptedData: string): StoredUser | null {
+  try {
+    const decryptedJson = decrypt(encryptedData);
+    return JSON.parse(decryptedJson) as StoredUser;
+  } catch (error) {
+    console.error('Erreur lors du déchiffrement des données utilisateur:', error);
+    return null;
+  }
 }
 
 export function getStoredUser(): StoredUser | null {
@@ -97,12 +94,53 @@ export function getStoredUser(): StoredUser | null {
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
+    const encryptedData = localStorage.getItem(STORAGE_KEY);
+    if (!encryptedData) {
       cachedUser = null;
       return null;
     }
-    const parsed = JSON.parse(raw) as StoredUser;
+
+    // Vérifier la version d'encryption
+    const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
+    
+    let parsed: StoredUser | null = null;
+    
+    if (version === CURRENT_ENCRYPTION_VERSION) {
+      // Données chiffrées avec AES-256
+      parsed = decryptUserData(encryptedData);
+      if (!parsed) {
+        // Échec du déchiffrement, nettoyer le localStorage
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+        cachedUser = null;
+        return null;
+      }
+    } else {
+      // Anciennes données non chiffrées ou avec ancien système (compatibilité)
+      try {
+        parsed = JSON.parse(encryptedData) as StoredUser;
+        // Migrer automatiquement vers le nouveau format chiffré
+        setStoredUser(parsed);
+      } catch (parseError) {
+        // Peut-être que c'est déjà chiffré mais sans version
+        parsed = decryptUserData(encryptedData);
+        if (!parsed) {
+          console.error('Impossible de déchiffrer les données utilisateur');
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+          cachedUser = null;
+          return null;
+        }
+        // Marquer comme chiffré pour les prochaines fois
+        localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
+      }
+    }
+
+    if (!parsed) {
+      cachedUser = null;
+      return null;
+    }
+
     cachedUser = parsed;
     cacheTimestamp = now;
     return parsed;
@@ -115,25 +153,10 @@ export function getStoredUser(): StoredUser | null {
   }
 }
 
-// Vérifie si les données sont chiffrées
-function isEncryptedData(user: StoredUser): boolean {
-  // Vérifier d'abord la version d'encryption
+// Vérifie si les données sont chiffrées avec AES-256
+function isEncryptedData(): boolean {
   const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
-  if (version === CURRENT_ENCRYPTION_VERSION) return true;
-  
-  // Vérifications de fallback
-  const email = user.email || '';
-  const firstName = user.firstName || '';
-  const lastName = user.lastName || '';
-  
-  // Si l'email contient des caractères non-ASCII, est très long, ou contient des caractères de base64
-  return email.length > 50 || 
-         /[^\x00-\x7F]/.test(email) || 
-         email.includes('=') ||
-         firstName.length > 30 ||
-         lastName.length > 30 ||
-         /[^\x00-\x7F]/.test(firstName) ||
-         /[^\x00-\x7F]/.test(lastName);
+  return version === CURRENT_ENCRYPTION_VERSION;
 }
 
 export function getStoredToken(): string | null {
@@ -148,13 +171,30 @@ function emitAuthChanged() {
 
 export function setStoredUser(user: StoredUser): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+  
+  try {
+    // Chiffrer toutes les données avant stockage
+    const encryptedData = encryptUserData(user);
+    localStorage.setItem(STORAGE_KEY, encryptedData);
+    localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
 
-  cachedUser = user;
-  cacheTimestamp = Date.now();
+    cachedUser = user;
+    cacheTimestamp = Date.now();
 
-  emitAuthChanged();
+    emitAuthChanged();
+  } catch (error) {
+    console.error('Erreur lors du stockage des données utilisateur:', error);
+    // En cas d'erreur, essayer de stocker sans chiffrement (fallback)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+      cachedUser = user;
+      cacheTimestamp = Date.now();
+      emitAuthChanged();
+    } catch (fallbackError) {
+      console.error('Erreur lors du fallback de stockage:', fallbackError);
+    }
+  }
 }
 
 export function setStoredToken(token: string): void {
@@ -175,10 +215,37 @@ export function clearStoredUser(): void {
   emitAuthChanged();
 }
 
-// Force la migration des données existantes vers le format chiffré
+// Force la migration des données existantes vers le format chiffré AES-256
 export function migrateUserData(): void {
   if (typeof window === 'undefined') return;
-  // Plus de migration : on laisse les données en clair (compatible avec l'ancien comportement)
+  
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    
+    const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
+    if (version === CURRENT_ENCRYPTION_VERSION) {
+      // Déjà migré
+      return;
+    }
+    
+    // Essayer de parser comme JSON (ancien format)
+    try {
+      const user = JSON.parse(raw) as StoredUser;
+      // Re-stocker avec chiffrement AES-256
+      setStoredUser(user);
+      console.log('Migration des données utilisateur vers AES-256 réussie');
+    } catch {
+      // Peut-être déjà chiffré mais sans version
+      const user = decryptUserData(raw);
+      if (user) {
+        setStoredUser(user);
+        console.log('Migration des données utilisateur vers AES-256 réussie');
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors de la migration des données:', error);
+  }
 }
 
 // Force le rechargement du cache (utile pour les tests)
