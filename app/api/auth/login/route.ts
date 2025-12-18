@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     if (!captcha.success || (captcha.score !== undefined && captcha.score < 0.5)) {
       return NextResponse.json(
         {
-          message: "reCAPTCHA verification failed",
+          message: "La vérification reCAPTCHA a échoué. Veuillez cocher à nouveau la case reCAPTCHA.",
           error: captcha.errorCodes || [],
         },
         { status: 400 }
@@ -45,10 +45,38 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json(response);
   } catch (error: any) {
+    // Normaliser les erreurs pour le frontend
     console.error('Erreur login:', error);
+
+    const rawMessage = typeof error?.message === 'string' ? error.message : '';
+    let message = 'Erreur de connexion';
+    let status = 500;
+
+    // Si le backend renvoie un JSON sous forme de texte, essayons de le parser
+    try {
+      if (rawMessage.startsWith('{')) {
+        const parsed = JSON.parse(rawMessage);
+        if (parsed?.message) {
+          // Ex: "Identifiants invalides"
+          message = parsed.message;
+        }
+        if (typeof parsed?.statusCode === 'number') {
+          status = parsed.statusCode;
+        }
+      }
+    } catch {
+      // On ignore les erreurs de parsing et on garde le message par défaut
+    }
+
+    // Mapping vers des messages plus clairs en français
+    if (message.includes('Identifiants invalides')) {
+      message = 'Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.';
+      status = 401;
+    }
+
     return NextResponse.json(
-      { message: error.message || 'Erreur de connexion' },
-      { status: 500 }
+      { message },
+      { status }
     );
   }
 }

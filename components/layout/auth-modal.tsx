@@ -24,6 +24,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [token, setToken] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
@@ -88,7 +89,9 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      setError("Veuillez vérifier le reCAPTCHA");
+      setError("Veuillez cocher la case reCAPTCHA pour confirmer que vous n'êtes pas un robot.");
+      // Forcer un nouveau rendu du reCAPTCHA
+      setCaptchaKey((k) => k + 1);
       return;
     }
     setIsLoading(true);
@@ -107,12 +110,52 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur de connexion');
+      // Tenter de lire la réponse JSON (même en cas d'erreur HTTP)
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        // Pas de corps JSON, on reste avec null
       }
 
-      const res = await response.json();
+      if (!response.ok) {
+        const backendMessage: string = data?.message || '';
+        let userMessage = 'Impossible de vous connecter pour le moment. Veuillez réessayer.';
+
+        if (response.status === 400) {
+          // Erreurs de saisie ou de reCAPTCHA
+          if (backendMessage.includes('Email et mot de passe requis')) {
+            userMessage = 'Veuillez saisir votre email et votre mot de passe.';
+          } else if (
+            backendMessage.includes('Vérification reCAPTCHA requise') ||
+            backendMessage.toLowerCase().includes('recaptcha')
+          ) {
+            userMessage = "La vérification reCAPTCHA a échoué. Veuillez cocher à nouveau la case reCAPTCHA.";
+            // Réinitialiser le token côté état et re-render le widget
+            setToken(null);
+            setCaptchaKey((k) => k + 1);
+          } else {
+            userMessage = 'Certains champs sont invalides. Vérifiez vos informations et réessayez.';
+          }
+        } else if (response.status === 401) {
+          // Identifiants invalides
+          userMessage = 'Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.';
+        } else if (response.status === 403) {
+          userMessage = "Vous n'avez pas l'autorisation de vous connecter avec ces identifiants.";
+        } else if (response.status === 429) {
+          userMessage =
+            'Trop de tentatives de connexion. Veuillez patienter quelques minutes avant de réessayer.';
+        } else if (response.status >= 500) {
+          userMessage =
+            'Un problème technique est survenu sur le serveur. Réessayez dans quelques instants.';
+        }
+
+        setError(userMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      const res = data;
       const authToken = (res as any).token;
       const user = (res as any).user || {};
       
@@ -361,6 +404,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                   </button>
                 </div>
                 <ResponsiveReCAPTCHA
+                    key={captchaKey}
                     sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
                     onChange={(token: string | null) => setToken(token)}
                   />
@@ -565,6 +609,7 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
               {/* Captcha pour l'inscription */}
               <div className="flex justify-center">
                 <ResponsiveReCAPTCHA
+                  key={captchaKey}
                   sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
                   onChange={(token: string | null) => setToken(token)}
                 />
