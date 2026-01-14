@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRecaptcha } from '@/lib/verifyRecaptcha';
-import { CampaignsApi } from '@/lib/api';
+import { API_BASE } from '@/lib/api';
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,9 +61,28 @@ export async function POST(req: NextRequest) {
       deadline: new Date(deadline).toISOString(),
     };
 
-    // Appeler directement l'API backend via notre client
-    const created = await CampaignsApi.create(campaignData);
+    // Appeler directement l'API backend en transmettant le token
+    const response = await fetch(`${API_BASE}/campaigns`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+      body: JSON.stringify(campaignData),
+    });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      return NextResponse.json(
+        {
+          message: errorData?.message || 'Erreur lors de la création de la campagne',
+          statusCode: response.status,
+        },
+        { status: response.status },
+      );
+    }
+
+    const created = await response.json();
     return NextResponse.json(created);
   } catch (error: any) {
     console.error('Erreur création campagne (internal-api):', error);
