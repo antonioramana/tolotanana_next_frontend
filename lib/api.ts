@@ -263,7 +263,19 @@ export const UploadApi = {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     const path = data.url || data.location || '';
-    return path.startsWith('http') ? path : `${API_BASE}${path}`;
+
+    // Si l'API_BASE est une URL absolue (dev/local), on préfixe comme avant
+    if (API_BASE.startsWith('http')) {
+      return path.startsWith('http') ? path : `${API_BASE}${path}`;
+    }
+
+    // En prod, API_BASE est relatif (ex: "/api"). Les fichiers sont servis sur "/uploads",
+    // donc on renvoie directement le chemin uploads pour qu'il soit servi par nginx.
+    if (typeof path === 'string' && path.startsWith('/uploads')) {
+      return path;
+    }
+
+    return `${API_BASE}${path}`;
   },
 };
 
