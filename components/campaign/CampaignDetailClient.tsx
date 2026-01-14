@@ -239,8 +239,8 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
         ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
         : '';
 
-      // Utiliser la nouvelle API avec protection reCAPTCHA
-      const response = await fetch('/api/donations/create', {
+      // Utiliser la nouvelle API interne avec protection reCAPTCHA
+      const response = await fetch('/internal-api/donations/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

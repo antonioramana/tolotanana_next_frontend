@@ -44,8 +44,8 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      // Utiliser la nouvelle API avec protection reCAPTCHA
-      const response = await fetch('/api/auth/admin-login', {
+      // Utiliser la nouvelle API interne avec protection reCAPTCHA
+      const response = await fetch('/internal-api/auth/admin-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

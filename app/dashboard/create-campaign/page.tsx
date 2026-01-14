@@ -173,8 +173,8 @@ export default function CreateCampaignPage() {
         console.log(`  [${index}] "${url}" - starts with http: ${url.startsWith('http:')}, starts with https: ${url.startsWith('https:')}`);
       });
 
-      // Utiliser la nouvelle API avec protection reCAPTCHA
-      const res = await fetch('/api/campaigns/create', {
+      // Utiliser la nouvelle API interne avec protection reCAPTCHA
+      const res = await fetch('/internal-api/campaigns/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
