@@ -27,6 +27,15 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const [paymentMethod, setPaymentMethod] = useState('mobile_money');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [selectedMedia, setSelectedMedia] = useState<null | { kind: 'image' | 'video'; src: string }>(null);
+
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return url || '';
+    // Corriger les anciennes URLs qui pointaient sur /api/uploads
+    if (url.includes('/api/uploads')) {
+      return url.replace('/api/uploads', '/uploads');
+    }
+    return url;
+  };
   const [adminBankInfos, setAdminBankInfos] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYouPopup, setShowThankYouPopup] = useState(false);
@@ -300,7 +309,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="relative">
                 <img
-                  src={campaign.images?.[0] || '/placeholder.png'}
+                  src={normalizeImageUrl(campaign.images?.[0]) || '/placeholder.png'}
                   alt={campaign.title}
                   className="w-full h-64 md:h-80 object-cover"
                 />

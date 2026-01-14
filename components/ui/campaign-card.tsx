@@ -13,6 +13,15 @@ interface CampaignCardProps {
   campaign: Campaign | any;
 }
 
+const normalizeImageUrl = (url?: string | null) => {
+  if (!url) return url || '';
+  // Corriger les anciennes URLs qui pointaient sur /api/uploads
+  if (url.includes('/api/uploads')) {
+    return url.replace('/api/uploads', '/uploads');
+  }
+  return url;
+};
+
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -53,7 +62,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group">
       <div className="relative">
         <img
-          src={(campaign.images && campaign.images[0]) || 'https://images.pexels.com/photos/6224/hands-people-woman-working.jpg?auto=compress&cs=tinysrgb&w=800'}
+          src={normalizeImageUrl(campaign.images && campaign.images[0]) || 'https://images.pexels.com/photos/6224/hands-people-woman-working.jpg?auto=compress&cs=tinysrgb&w=800'}
           alt={campaign.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
         />
