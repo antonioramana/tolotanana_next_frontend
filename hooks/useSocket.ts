@@ -46,12 +46,22 @@ export function useSocket(): UseSocketReturn {
     // Import dynamique de socket.io-client pour éviter les erreurs SSR et forcer le build navigateur
     import('socket.io-client/dist/socket.io.js').then((mod: any) => {
       const io = mod.io || mod.default?.io || mod.default || mod;
+      
+      // En production, utiliser l'URL relative pour passer par nginx
+      // En développement, utiliser l'URL complète du backend
+      const socketUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+        ? window.location.origin // Utilise le domaine actuel (passe par nginx)
+        : (process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750');
+      
+      console.log('🔌 Connexion Socket.IO à:', socketUrl);
+      
       // Créer la connexion Socket.IO
-      const newSocket = io(process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750', {
+      const newSocket = io(socketUrl, {
         auth: {
           token: token,
         },
         transports: ['websocket', 'polling'],
+        path: '/socket.io/', // Chemin explicite pour Socket.IO
       });
 
       socketRef.current = newSocket;
