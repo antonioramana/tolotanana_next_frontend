@@ -4,6 +4,7 @@ import { FiEye, FiCheck, FiX, FiSearch, FiFilter, FiDollarSign, FiUser, FiCalend
 import { WithdrawalsApi, CatalogApi } from '@/lib/api';
 import SimplePagination from '@/components/ui/simple-pagination';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { getStoredToken } from '@/lib/auth-client';
 
 export default function AdminWithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -47,7 +48,7 @@ export default function AdminWithdrawalsPage() {
       const res = await fetch(`${apiBase}/withdrawal-requests?${params.toString()}`, { 
         cache: 'no-store',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_user') ? JSON.parse(localStorage.getItem('auth_user') as string)?.token || '' : ''}`
+          'Authorization': `Bearer ${getStoredToken() || ''}`
         }
       });
       const data = await res.json();
@@ -138,7 +139,7 @@ export default function AdminWithdrawalsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_user') ? JSON.parse(localStorage.getItem('auth_user') as string)?.token || '' : ''}`
+          'Authorization': `Bearer ${getStoredToken() || ''}`
         },
         body: JSON.stringify({
           withdrawalId: selectedWithdrawal.id,

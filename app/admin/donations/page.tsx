@@ -44,7 +44,7 @@ export default function AdminDonationsPage() {
       const res = await fetch(`${apiBase}/donations?${params.toString()}`, { 
         cache: 'no-store',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_user') ? JSON.parse(localStorage.getItem('auth_user') as string)?.token || '' : ''}`
+          'Authorization': `Bearer ${getStoredToken() || ''}`
         }
       });
       const data = await res.json();
@@ -67,8 +67,7 @@ export default function AdminDonationsPage() {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
       
       // Récupérer le token d'authentification
-      const authUser = localStorage.getItem('auth_user');
-      const token = authUser ? JSON.parse(authUser).token : null;
+      const token = getStoredToken();
       
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {

@@ -1,42 +1,34 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
 
-function parseJwt(token: string): any | null {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-}
+import { getStoredToken, clearStoredUser } from './auth-client';
 
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
+  const token = getStoredToken();
+  if (!token) return null;
+
+  // Check expiry
   try {
-    const raw = localStorage.getItem('auth_user');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const token: string | undefined = parsed?.token;
-    if (!token) return null;
-    const payload = parseJwt(token);
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(
+      decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+    );
     if (payload && typeof payload.exp === 'number') {
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      if (payload.exp <= nowSeconds) {
-        // Token expired: clear stored user
-        try { localStorage.removeItem('auth_user'); } catch {}
+      if (payload.exp <= Math.floor(Date.now() / 1000)) {
+        clearStoredUser();
         return null;
       }
     }
-    return token;
   } catch {
     return null;
   }
+  return token;
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -55,7 +47,7 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
-      try { localStorage.removeItem('auth_user'); } catch {}
+      clearStoredUser();
       // Redirect to appropriate login page depending on current path
       if (typeof window !== 'undefined') {
         const isAdminArea = window.location.pathname.startsWith('/admin');
@@ -387,6 +379,13 @@ export const PublicTestimonialsApi = {
 // Dashboard API (Admin)
 export const DashboardApi = {
   getStats: () => api<any>('/dashboard/stats'),
+};
+
+// Maintenance API
+export const MaintenanceApi = {
+  getStatus: () => apiPublic<{ isActive: boolean; message: string; activatedAt: string | null }>('/maintenance/status'),
+  toggle: (isActive: boolean, message?: string) => api<any>('/maintenance/toggle', { method: 'PATCH', body: JSON.stringify({ isActive, message }) }),
+  updateMessage: (message: string) => api<any>('/maintenance/message', { method: 'PATCH', body: JSON.stringify({ message }) }),
 };
 
 export { api, apiPublic, getAuthToken, API_BASE };

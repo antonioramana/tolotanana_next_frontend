@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiUpload, FiX, FiCalendar, FiDollarSign, FiFileText, FiImage } from 'react-icons/fi';
 import { BankApi, UploadApi, CatalogApi } from '@/lib/api';
+import { getStoredToken } from '@/lib/auth-client';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function CreateCampaignPage() {
@@ -162,9 +163,7 @@ export default function CreateCampaignPage() {
     } as any;
 
     try {
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       console.log('[CreateCampaign] Submitting payload:', payload);
       console.log('[CreateCampaign] Image URLs being sent:', payload.images);

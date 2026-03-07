@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FiUser, FiMail, FiPhone, FiCalendar, FiEdit3, FiSave, FiX, FiUpload, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { UsersApi, CampaignsApi, UploadApi } from '@/lib/api';
+import { getStoredUser, setStoredUser } from '@/lib/auth-client';
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -110,9 +111,9 @@ export default function UserProfilePage() {
       setEditing(false);
       
       // Update stored user data
-      const storedUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+      const storedUser = getStoredUser() || {};
       const updatedUser = { ...storedUser, ...updatedProfile };
-      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+      setStoredUser(updatedUser);
       
     } catch (e: any) {
       // Essayer d'extraire les erreurs détaillées du backend

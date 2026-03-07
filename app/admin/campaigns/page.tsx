@@ -4,6 +4,7 @@ import { FiEye, FiCheck, FiX, FiPause, FiPlay, FiFlag, FiSearch, FiLoader } from
 import SimplePagination from '@/components/ui/simple-pagination';
 import { CampaignsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { getStoredToken, getStoredUser } from '@/lib/auth-client';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -35,15 +36,14 @@ export default function AdminCampaignsPage() {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
       
       // Récupérer le token d'authentification
-      const authUser = localStorage.getItem('auth_user');
-      const token = authUser ? JSON.parse(authUser).token : null;
-      
+      const token = getStoredToken();
+
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
-      
-      const res = await fetch(`${apiBase}/campaigns?${params.toString()}`, { 
+
+      const res = await fetch(`${apiBase}/campaigns?${params.toString()}`, {
         cache: 'no-store',
         headers
       });
@@ -101,9 +101,7 @@ export default function AdminCampaignsPage() {
       
       if (action === 'change_status' && newStatus) {
         // Récupérer le token d'authentification
-        const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-          ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-          : '';
+        const token = getStoredToken() || '';
 
         // Appeler l'API backend pour changer le statut (endpoint admin)
         const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getStoredUser } from '@/lib/auth-client';
+import { getStoredUser, clearStoredUser } from '@/lib/auth-client';
 import { api } from '@/lib/api';
 
 export default function DebugAuthPage() {
@@ -70,7 +70,7 @@ export default function DebugAuthPage() {
   };
 
   const clearAuth = () => {
-    localStorage.removeItem('auth_user');
+    clearStoredUser();
     setUser(null);
     setToken(null);
     setTokenPayload(null);

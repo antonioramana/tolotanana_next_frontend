@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FiPercent, FiFileText, FiSettings, FiDollarSign, FiMessageSquare } from 'react-icons/fi';
+import { FiPercent, FiFileText, FiSettings, FiDollarSign, FiMessageSquare, FiTool } from 'react-icons/fi';
 
 export default function AdminSettingsPage() {
   const settingsCards = [
@@ -37,6 +37,14 @@ export default function AdminSettingsPage() {
       href: '/admin/settings/terms-of-service',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
+    },
+    {
+      title: 'Mode Maintenance',
+      description: 'Activer ou désactiver le mode maintenance de la plateforme',
+      icon: FiTool,
+      href: '/admin/settings/maintenance',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
     },
   ];
 

@@ -5,6 +5,7 @@ import { FiSave, FiEdit, FiTrash2, FiPlus, FiCreditCard, FiDollarSign } from 're
 import { BankApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { getStoredToken } from '@/lib/auth-client';
 
 interface BankInfo {
   id: string;
@@ -63,9 +64,7 @@ export default function AdminBankInfoPage() {
       setSaving(true);
       
       // Récupérer le token d'authentification
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       if (!token) {
         toast({

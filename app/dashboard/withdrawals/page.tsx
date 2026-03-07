@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEye, FiEdit, FiTrash2, FiDollarSign, FiCalendar, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi';
 import { WithdrawalsApi, CatalogApi, BankApi, CampaignsApi } from '@/lib/api';
+import { getStoredToken } from '@/lib/auth-client';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
 export default function UserWithdrawalsPage() {
@@ -439,9 +440,7 @@ function CreateWithdrawalModal({ campaigns, bankInfos, onClose, onSuccess }: any
       setError(null);
       
       // Récupérer le token d'authentification
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       if (!token) {
         setError('Vous devez être connecté pour effectuer cette action');

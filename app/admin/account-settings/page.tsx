@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { FiUser, FiMail, FiLock, FiTrash2, FiSave, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useToast } from '@/hooks/use-toast';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { getStoredToken, clearStoredUser } from '@/lib/auth-client';
 
 export default function AdminAccountSettingsPage() {
   const { toast } = useToast();
@@ -45,9 +46,7 @@ export default function AdminAccountSettingsPage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       if (!token) {
         toast({
@@ -106,9 +105,7 @@ export default function AdminAccountSettingsPage() {
     try {
       setSaving(true);
       
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       const response = await fetch('/api/admin/account/change-email', {
         method: 'POST',
@@ -191,9 +188,7 @@ export default function AdminAccountSettingsPage() {
     try {
       setSaving(true);
       
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       const response = await fetch('/api/admin/account/change-password', {
         method: 'POST',
@@ -271,9 +266,7 @@ export default function AdminAccountSettingsPage() {
     try {
       setSaving(true);
       
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       const response = await fetch('/api/admin/account/delete', {
         method: 'POST',
@@ -298,7 +291,7 @@ export default function AdminAccountSettingsPage() {
       });
 
       // Rediriger vers la page de connexion
-      localStorage.removeItem('auth_user');
+      clearStoredUser();
       window.location.href = '/admin-login';
     } catch (error: any) {
       toast({

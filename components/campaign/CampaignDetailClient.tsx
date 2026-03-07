@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getStoredUser } from '@/lib/auth-client';
+import { getStoredUser, getStoredToken } from '@/lib/auth-client';
 import { FiShare2, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -244,9 +244,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
       };
       
       // Récupérer le token d'authentification (optionnel pour les dons)
-      const token = (typeof window !== 'undefined' && localStorage.getItem('auth_user'))
-        ? (JSON.parse(localStorage.getItem('auth_user') as string)?.token || '')
-        : '';
+      const token = getStoredToken() || '';
 
       // Utiliser la nouvelle API interne avec protection reCAPTCHA
       const response = await fetch('/internal-api/donations/create', {

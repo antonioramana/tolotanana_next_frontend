@@ -29,9 +29,14 @@ export default function TermsPage() {
       setError(null);
       const data = await TermsOfServiceApi.getActive();
       setTerms(data);
-    } catch (err) {
-      console.error('Erreur lors du chargement des conditions d\'utilisation:', err);
-      setError('Impossible de charger les conditions d\'utilisation');
+    } catch (err: any) {
+      // Si 404 ou pas de données, on laisse terms à null (message informatif)
+      if (err?.message?.includes('404') || err?.status === 404) {
+        setTerms(null);
+      } else {
+        console.error('Erreur lors du chargement des conditions d\'utilisation:', err);
+        setError('Impossible de charger les conditions d\'utilisation');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,11 +81,21 @@ export default function TermsPage() {
 
   if (!terms) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FiFileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Conditions d'utilisation</h1>
-          <p className="text-gray-600">Aucune politique d'utilisation disponible pour le moment.</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FiFileText className="w-10 h-10 text-orange-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Conditions d&apos;utilisation</h1>
+          <p className="text-gray-500 mb-6">
+            Les conditions d&apos;utilisation sont en cours de rédaction et seront disponibles prochainement.
+          </p>
+          <a
+            href="/"
+            className="inline-flex items-center px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
+          >
+            Retour à l&apos;accueil
+          </a>
         </div>
       </div>
     );

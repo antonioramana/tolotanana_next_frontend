@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit, FiTrash2, FiSearch, FiTag, FiSave, FiX } from 'react-icons/fi';
+import { getStoredToken } from '@/lib/auth-client';
 
 interface Category {
   id: string;
@@ -38,7 +39,7 @@ export default function AdminCategoriesPage() {
       setLoading(true);
       setError(null);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+      const token = getStoredToken();
       
       const res = await fetch(`${apiBase}/categories`, {
         headers: {
@@ -70,7 +71,7 @@ export default function AdminCategoriesPage() {
     setIsSubmitting(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+      const token = getStoredToken();
 
       const res = await fetch(`${apiBase}/categories`, {
         method: 'POST',
@@ -106,7 +107,7 @@ export default function AdminCategoriesPage() {
     setIsSubmitting(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+      const token = getStoredToken();
 
       const res = await fetch(`${apiBase}/categories/${editingCategory.id}`, {
         method: 'PUT',
@@ -141,7 +142,7 @@ export default function AdminCategoriesPage() {
 
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-      const token = JSON.parse(localStorage.getItem('auth_user') || '{}')?.token;
+      const token = getStoredToken();
 
       const res = await fetch(`${apiBase}/categories/${categoryId}`, {
         method: 'DELETE',

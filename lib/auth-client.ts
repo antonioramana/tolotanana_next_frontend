@@ -103,6 +103,20 @@ export function getStoredUser(): StoredUser | null {
       return null;
     }
     const parsed = JSON.parse(raw) as StoredUser;
+
+    // Déchiffrer si les données sont chiffrées
+    const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
+    if (version === CURRENT_ENCRYPTION_VERSION) {
+      const decrypted = decryptUserData(parsed);
+      cachedUser = decrypted;
+      cacheTimestamp = now;
+      return decrypted;
+    }
+
+    // Données non chiffrées (ancien format) : migrer vers le format chiffré
+    const encrypted = encryptUserData(parsed);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+    localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
     cachedUser = parsed;
     cacheTimestamp = now;
     return parsed;
@@ -148,8 +162,11 @@ function emitAuthChanged() {
 
 export function setStoredUser(user: StoredUser): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  localStorage.removeItem(ENCRYPTION_VERSION_KEY);
+
+  // Chiffrer avant de stocker
+  const encrypted = encryptUserData(user);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+  localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
 
   cachedUser = user;
   cacheTimestamp = Date.now();
