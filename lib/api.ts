@@ -1,9 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
 
-import { getStoredToken, clearStoredUser } from './auth-client';
-
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
+
+  // Import dynamique côté client uniquement
+  const { getStoredToken, clearStoredUser } = require('./auth-client');
   const token = getStoredToken();
   if (!token) return null;
 
@@ -47,9 +48,10 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
-      clearStoredUser();
       // Redirect to appropriate login page depending on current path
       if (typeof window !== 'undefined') {
+        const { clearStoredUser } = require('./auth-client');
+        clearStoredUser();
         const isAdminArea = window.location.pathname.startsWith('/admin');
         const isAdminLoginArea = window.location.pathname.startsWith('/admin-login');
         const target = isAdminArea || isAdminLoginArea ? '/admin-login' : '/login';

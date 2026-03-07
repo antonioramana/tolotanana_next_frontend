@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { getStoredToken } from '@/lib/auth-client';
+import { AuthApi } from '@/lib/api';
 
 export interface Notification {
   id: string;
@@ -30,85 +31,86 @@ export function useSocket(): UseSocketReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const socketRef = useRef<any | null>(null);
+  const initialLoadDone = useRef(false);
 
+  // Charger les notifications existantes depuis la DB au montage
   useEffect(() => {
-    // Vérifier que nous sommes côté client
-    if (typeof window === 'undefined') {
-      return;
-    }
+    if (initialLoadDone.current) return;
+    const token = getStoredToken();
+    if (!token) return;
+
+    initialLoadDone.current = true;
+    AuthApi.getNotifications()
+      .then((data: { notifications: Notification[]; unreadCount: number }) => {
+        if (data?.notifications?.length) {
+          setNotifications(data.notifications);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Connexion WebSocket
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
     const token = getStoredToken();
-    
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
-    // Import dynamique de socket.io-client pour éviter les erreurs SSR et forcer le build navigateur
     import('socket.io-client/dist/socket.io.js').then((mod: any) => {
       const io = mod.io || mod.default?.io || mod.default || mod;
-      
-      // En production, utiliser l'URL relative pour passer par nginx
-      // En développement, utiliser l'URL complète du backend
-      const socketUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-        ? window.location.origin // Utilise le domaine actuel (passe par nginx)
-        : (process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750');
-      
-      console.log('🔌 Connexion Socket.IO à:', socketUrl);
-      
-      // Créer la connexion Socket.IO
+
+      // Calculer l'URL du socket — enlever /api s'il est présent
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
+      let socketUrl: string;
+
+      if (window.location.hostname !== 'localhost') {
+        socketUrl = window.location.origin;
+      } else {
+        socketUrl = apiBase.replace(/\/api\/?$/, '');
+      }
+
       const newSocket = io(socketUrl, {
-        auth: {
-          token: token,
-        },
+        auth: { token },
         transports: ['websocket', 'polling'],
-        path: '/socket.io/', // Chemin explicite pour Socket.IO
+        path: '/socket.io/',
       });
 
       socketRef.current = newSocket;
       setSocket(newSocket);
 
-      // Événements de connexion
       newSocket.on('connect', () => {
         console.log('Connecté aux notifications en temps réel');
         setIsConnected(true);
       });
 
       newSocket.on('disconnect', () => {
-        console.log('Déconnecté des notifications');
         setIsConnected(false);
       });
 
-      newSocket.on('connected', (data: unknown) => {
-        console.log('Connexion WebSocket établie:', data);
+      newSocket.on('connect_error', (err: any) => {
+        console.error('Erreur connexion WebSocket:', err.message);
       });
 
-      // Écouter les nouvelles notifications
+      // Écouter les nouvelles notifications temps réel
       newSocket.on('notification', (notification: Notification) => {
-        console.log('Nouvelle notification reçue:', notification);
-        
         setNotifications(prev => {
-          // Éviter les doublons
           const exists = prev.some(n => n.id === notification.id);
           if (exists) return prev;
-          
           return [notification, ...prev];
         });
 
-        // Afficher une notification toast si disponible
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-          if (Notification.permission === 'granted') {
-            new Notification(notification.title, {
-              body: notification.message,
-              icon: '/favicon.ico',
-            });
-          }
+        // Notification navigateur
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(notification.title, {
+            body: notification.message,
+            icon: '/favicon.ico',
+          });
         }
       });
     }).catch((error) => {
-      console.error('Erreur lors du chargement de socket.io-client:', error);
+      console.error('Erreur chargement socket.io-client:', error);
     });
 
-    // Nettoyage à la déconnexion
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -124,24 +126,13 @@ export function useSocket(): UseSocketReturn {
   };
 
   const markAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === notificationId 
-          ? { ...notification, read: true }
-          : notification
-      )
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
-
-    // Envoyer au serveur
-    if (socket) {
-      socket.emit('mark_notification_read', { notificationId });
-    }
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const clearNotifications = () => {
