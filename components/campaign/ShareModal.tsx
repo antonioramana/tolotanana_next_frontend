@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FiX, FiCopy, FiCheck, FiShare2, FiMail, FiLink, FiMessageSquare } from 'react-icons/fi';
+import { FiX, FiCopy, FiCheck, FiShare2, FiMail, FiLink, FiMessageSquare, FiDownload } from 'react-icons/fi';
+import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ShareModalProps {
@@ -70,7 +71,7 @@ export default function ShareModal({ isOpen, onClose, campaignTitle, campaignId 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div 
+      <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in-0 zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
@@ -97,7 +98,7 @@ export default function ShareModal({ isOpen, onClose, campaignTitle, campaignId 
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto">
           {/* Campaign Title */}
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <p className="text-sm text-gray-600 mb-1">Campagne</p>
@@ -121,11 +122,10 @@ export default function ShareModal({ isOpen, onClose, campaignTitle, campaignId 
               </div>
               <button
                 onClick={copyToClipboard}
-                className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
-                  copied
-                    ? 'bg-green-500 text-white'
-                    : 'bg-orange-500 hover:bg-orange-600 text-white'
-                }`}
+                className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${copied
+                  ? 'bg-green-500 text-white'
+                  : 'bg-orange-500 hover:bg-orange-600 text-white'
+                  }`}
               >
                 {copied ? (
                   <>
@@ -138,6 +138,50 @@ export default function ShareModal({ isOpen, onClose, campaignTitle, campaignId 
                     <span>Copier</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-3">QR Code</p>
+            <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="bg-white p-3 rounded-lg shadow-sm">
+                <QRCodeSVG
+                  id="campaign-qr-code"
+                  value={shareUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/campaigns/${campaignId}`}
+                  size={160}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#ea580c"
+                />
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Scannez ce code pour accéder à la campagne
+              </p>
+              <button
+                onClick={() => {
+                  const svg = document.getElementById('campaign-qr-code');
+                  if (!svg) return;
+                  const svgData = new XMLSerializer().serializeToString(svg);
+                  const canvas = document.createElement('canvas');
+                  const ctx = canvas.getContext('2d');
+                  const img = new Image();
+                  img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx?.drawImage(img, 0, 0);
+                    const link = document.createElement('a');
+                    link.download = `qr-${campaignTitle.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                  };
+                  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <FiDownload className="w-4 h-4" />
+                Télécharger le QR Code
               </button>
             </div>
           </div>
