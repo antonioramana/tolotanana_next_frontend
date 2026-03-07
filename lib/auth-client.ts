@@ -48,43 +48,14 @@ function decrypt(encryptedText: string): string {
   }
 }
 
-// Chiffre les données sensibles de l'utilisateur (inclut désormais le token)
-function encryptUserData(user: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
-  const encryptedUser = { ...user };
-  
-  sensitiveFields.forEach(field => {
-    const value = encryptedUser[field as keyof StoredUser] as string | undefined;
-    if (value) {
-      (encryptedUser as any)[field] = encrypt(value);
-    }
-  });
-  
-  return encryptedUser;
+// Chiffre tout l'objet utilisateur en un seul blob opaque
+function encryptUserData(user: StoredUser): string {
+  return encrypt(JSON.stringify(user));
 }
 
-// Déchiffre les données sensibles de l'utilisateur (inclut le token)
-function decryptUserData(encryptedUser: StoredUser): StoredUser {
-  const sensitiveFields = ['email', 'firstName', 'lastName', 'role', 'phone', 'token'];
-  const decryptedUser = { ...encryptedUser };
-  
-  sensitiveFields.forEach(field => {
-    if (decryptedUser[field as keyof StoredUser]) {
-      const value = decryptedUser[field as keyof StoredUser] as string;
-      try {
-        const decryptedValue = decrypt(value);
-        // Vérifier que le déchiffrement a fonctionné (pas d'erreur)
-        if (decryptedValue && decryptedValue !== value) {
-          (decryptedUser as any)[field] = decryptedValue;
-        }
-      } catch (error) {
-        console.warn(`Erreur lors du déchiffrement du champ ${field}:`, error);
-        // Garder la valeur originale en cas d'erreur
-      }
-    }
-  });
-  
-  return decryptedUser;
+// Déchiffre le blob opaque en objet utilisateur
+function decryptUserData(blob: string): StoredUser {
+  return JSON.parse(decrypt(blob));
 }
 
 export function getStoredUser(): StoredUser | null {
@@ -102,20 +73,20 @@ export function getStoredUser(): StoredUser | null {
       cachedUser = null;
       return null;
     }
-    const parsed = JSON.parse(raw) as StoredUser;
 
-    // Déchiffrer si les données sont chiffrées
     const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
     if (version === CURRENT_ENCRYPTION_VERSION) {
-      const decrypted = decryptUserData(parsed);
+      // Données chiffrées (blob opaque) — déchiffrer
+      const decrypted = decryptUserData(raw);
       cachedUser = decrypted;
       cacheTimestamp = now;
       return decrypted;
     }
 
-    // Données non chiffrées (ancien format) : migrer vers le format chiffré
+    // Ancien format (JSON en clair) — migrer vers le blob chiffré
+    const parsed = JSON.parse(raw) as StoredUser;
     const encrypted = encryptUserData(parsed);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+    localStorage.setItem(STORAGE_KEY, encrypted);
     localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
     cachedUser = parsed;
     cacheTimestamp = now;
@@ -129,26 +100,6 @@ export function getStoredUser(): StoredUser | null {
   }
 }
 
-// Vérifie si les données sont chiffrées
-function isEncryptedData(user: StoredUser): boolean {
-  // Vérifier d'abord la version d'encryption
-  const version = localStorage.getItem(ENCRYPTION_VERSION_KEY);
-  if (version === CURRENT_ENCRYPTION_VERSION) return true;
-  
-  // Vérifications de fallback
-  const email = user.email || '';
-  const firstName = user.firstName || '';
-  const lastName = user.lastName || '';
-  
-  // Si l'email contient des caractères non-ASCII, est très long, ou contient des caractères de base64
-  return email.length > 50 || 
-         /[^\x00-\x7F]/.test(email) || 
-         email.includes('=') ||
-         firstName.length > 30 ||
-         lastName.length > 30 ||
-         /[^\x00-\x7F]/.test(firstName) ||
-         /[^\x00-\x7F]/.test(lastName);
-}
 
 export function getStoredToken(): string | null {
   const u = getStoredUser();
@@ -163,9 +114,9 @@ function emitAuthChanged() {
 export function setStoredUser(user: StoredUser): void {
   if (typeof window === 'undefined') return;
 
-  // Chiffrer avant de stocker
+  // Chiffrer tout l'objet en un blob opaque
   const encrypted = encryptUserData(user);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+  localStorage.setItem(STORAGE_KEY, encrypted);
   localStorage.setItem(ENCRYPTION_VERSION_KEY, CURRENT_ENCRYPTION_VERSION);
 
   cachedUser = user;
