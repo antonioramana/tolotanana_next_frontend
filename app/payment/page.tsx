@@ -260,10 +260,9 @@ export default function PaymentPage() {
                 <p className="text-sm text-gray-600">Aide pour les frais médicaux de ma fille</p>
               </div>
 
-              <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-800">
-                  <strong>ℹ️ Important :</strong> Votre don sera en attente de validation par l'administrateur. 
-                  Une fois validé, le montant sera ajouté au total de la campagne.
+              <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-800">
+                  <strong>✅ Info :</strong> Votre don sera accepté automatiquement et le montant sera immédiatement ajouté au total de la campagne.
                 </p>
               </div>
 

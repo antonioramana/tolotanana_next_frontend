@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Mapping vers des messages plus clairs en français
-    if (message.includes('Identifiants invalides')) {
+    if (message.includes('pas encore vérifié')) {
+      // Garder le message tel quel pour que le frontend puisse détecter le cas
+      status = 401;
+    } else if (message.includes('Identifiants invalides')) {
       message = 'Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.';
       status = 401;
     }

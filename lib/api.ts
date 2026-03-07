@@ -105,7 +105,17 @@ export const AuthApi = {
       body: JSON.stringify(data),
     }),
   register: (data: { firstName: string; lastName: string; email: string; password: string; role?: 'demandeur'|'donateur'|'admin'; phone?: string; token?: string }) =>
-    api<{ user: any; token: string }>('/auth/register', {
+    apiPublic<{ message: string; requiresVerification: boolean; email: string; verificationCode?: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  verifyRegistration: (data: { email: string; verificationCode: string }) =>
+    apiPublic<{ user: any; token: string }>('/auth/verify-registration', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  resendRegistrationCode: (data: { email: string }) =>
+    apiPublic<{ message: string; verificationCode?: string }>('/auth/resend-registration-code', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

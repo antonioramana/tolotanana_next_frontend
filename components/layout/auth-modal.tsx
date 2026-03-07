@@ -10,7 +10,7 @@ import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 
-type Tab = 'login' | 'register' | 'forgot-password' | 'reset-password';
+type Tab = 'login' | 'register' | 'forgot-password' | 'reset-password' | 'verify-registration';
 
 interface AuthModalProps {
   open: boolean;
@@ -26,8 +26,10 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
   const [error, setError] = useState('');
   const [captchaKey, setCaptchaKey] = useState(0);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
   const [token, setToken] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -138,6 +140,19 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
             userMessage = 'Certains champs sont invalides. Vérifiez vos informations et réessayez.';
           }
         } else if (response.status === 401) {
+          // Vérifier si c'est un problème de compte non vérifié
+          if (backendMessage.includes('pas encore vérifié') || backendMessage.includes('not verified')) {
+            // Rediriger vers la vérification
+            setPendingVerificationEmail(form.email);
+            setActiveTab('verify-registration');
+            setError('');
+            setIsLoading(false);
+            // Renvoyer automatiquement un code
+            try {
+              await AuthApi.resendRegistrationCode({ email: form.email });
+            } catch {}
+            return;
+          }
           // Identifiants invalides
           userMessage = 'Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.';
         } else if (response.status === 403) {
@@ -281,10 +296,54 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
         phone: form.phone || undefined,
         token: token,
       });
+
+      if ((res as any).requiresVerification) {
+        // Passer à l'étape de vérification email
+        setPendingVerificationEmail(form.email);
+        setActiveTab('verify-registration');
+        setError('');
+        setToken(null);
+      } else {
+        // Fallback : connexion directe (ne devrait pas arriver)
+        const authToken = (res as any).token;
+        const user = (res as any).user || {};
+        setStoredUser({ ...user, token: authToken });
+        localStorage.removeItem('auth_form_data');
+        router.push('/dashboard');
+        close();
+      }
+    } catch (err: any) {
+      let msg = "Impossible de créer le compte. L'email existe peut-être déjà.";
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.message) msg = parsed.message;
+      } catch {}
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    if (!form.verificationCode.trim() || form.verificationCode.length !== 6) {
+      setError('Le code de vérification doit contenir exactement 6 chiffres');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const res = await AuthApi.verifyRegistration({
+        email: pendingVerificationEmail,
+        verificationCode: form.verificationCode,
+      });
       const authToken = (res as any).token;
       const user = (res as any).user || {};
       setStoredUser({ ...user, token: authToken });
-      // Vider les champs avant la redirection
+      // Vider les champs
       setForm({
         firstName: '',
         lastName: '',
@@ -296,15 +355,44 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
         role: 'demandeur',
         acceptTerms: false,
       });
-      // Supprimer les données sauvegardées
       localStorage.removeItem('auth_form_data');
-      setToken(null); // Réinitialiser le token captcha
       router.push('/dashboard');
       close();
     } catch (err: any) {
-      setError("Impossible de créer le compte. L'email existe peut-être déjà.");
+      let msg = 'Code de vérification invalide';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.message) msg = parsed.message;
+      } catch {}
+      setError(msg);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendRegistrationCode = async () => {
+    if (resendCooldown > 0) return;
+    setError('');
+    try {
+      await AuthApi.resendRegistrationCode({ email: pendingVerificationEmail });
+      // Démarrer un cooldown de 60 secondes
+      setResendCooldown(60);
+      const interval = setInterval(() => {
+        setResendCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err: any) {
+      let msg = 'Impossible de renvoyer le code';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.message) msg = parsed.message;
+      } catch {}
+      setError(msg);
     }
   };
 
@@ -339,6 +427,13 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                   className="px-3 py-1.5 rounded-lg text-sm font-medium bg-orange-100 text-orange-700"
                 >
                   Nouveau mot de passe
+                </button>
+              )}
+              {activeTab === 'verify-registration' && (
+                <button
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-700"
+                >
+                  Vérification email
                 </button>
               )}
             </div>
@@ -547,6 +642,79 @@ export default function AuthModal({ open, onClose, initialTab = 'login' }: AuthM
                       disabled={isLoading}
                     >
                       ← Retour à la demande
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          ) : activeTab === 'verify-registration' ? (
+            <div className="px-6 py-6">
+              <div className="space-y-4">
+                <div className="text-center mb-2">
+                  <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                    <FiMail className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Vérifiez votre email
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Un code de vérification a été envoyé à<br />
+                    <strong className="text-gray-900">{pendingVerificationEmail}</strong>
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyRegistration} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Code de vérification</label>
+                    <div className="relative">
+                      <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        required
+                        value={form.verificationCode}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setForm({...form, verificationCode: val});
+                        }}
+                        className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-xl tracking-widest font-mono"
+                        placeholder="000000"
+                        maxLength={6}
+                        autoFocus
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || form.verificationCode.length !== 6}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isLoading ? 'Vérification...' : 'Vérifier et activer mon compte'}
+                  </button>
+
+                  <div className="text-center space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleResendRegistrationCode}
+                      disabled={resendCooldown > 0}
+                      className="text-sm text-orange-600 hover:text-orange-800 font-medium disabled:text-gray-400"
+                    >
+                      {resendCooldown > 0 ? `Renvoyer le code (${resendCooldown}s)` : 'Renvoyer le code'}
+                    </button>
+                    <br />
+                    <button
+                      type="button"
+                      onClick={() => { setActiveTab('register'); setError(''); }}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      ← Modifier mes informations
                     </button>
                   </div>
                 </form>

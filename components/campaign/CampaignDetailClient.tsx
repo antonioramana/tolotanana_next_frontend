@@ -579,7 +579,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                 </div>
                 <div className="text-gray-600">collectés sur {formatMoney(targetAmount)}</div>
                 {campaign.stats?.pendingAmount > 0 && (
-                  <div className="text-sm text-yellow-700 mt-1">{formatMoney(campaign.stats.pendingAmount)} en attente de validation</div>
+                  <div className="text-sm text-green-700 mt-1">{formatMoney(campaign.stats.pendingAmount)} en cours de traitement</div>
                 )}
                 <div className="text-sm text-gray-500 mt-1">
                   {displayTotalDonors} donateurs • {daysLeft > 0 ? `${daysLeft} jours restants` : 'Terminée'}
@@ -1087,10 +1087,10 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
               <div className="text-sm text-blue-800">
                 <p className="font-medium mb-2">Prochaines étapes :</p>
                 <ul className="text-left space-y-1">
-                  <li>• Votre don est actuellement <strong>en attente de validation</strong></li>
-                  <li>• L'administrateur va vérifier et valider votre don</li>
-                  <li>• Une fois validé, le montant sera ajouté au total de la campagne</li>
-                  
+                  <li>• Votre don a été <strong>accepté automatiquement</strong></li>
+                  <li>• Le montant a été ajouté au total de la campagne</li>
+                  <li>• Le créateur de la campagne a été notifié de votre don</li>
+
                 </ul>
                 <div className="mt-3 pt-2 border-t border-blue-300">
                   <p className="text-xs text-blue-700">
