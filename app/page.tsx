@@ -9,7 +9,7 @@ import { PublicTestimonial } from '@/types';
 import StatsSkeleton from '@/components/ui/StatsSkeleton';
 import CampaignCardSkeleton from '@/components/ui/CampaignCardSkeleton';
 import TestimonialSkeleton from '@/components/ui/TestimonialSkeleton';
-
+import LoadingDots from '@/components/ui/LoadingDots';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<any>(null);
