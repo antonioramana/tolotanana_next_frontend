@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DebugCaptchaPage() {
+  const { toast } = useToast();
   const [token, setToken] = useState<string | null>(null);
   const [envVar, setEnvVar] = useState<string>('');
 
@@ -43,7 +45,6 @@ export default function DebugCaptchaPage() {
           <ResponsiveReCAPTCHA
             sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
             onChange={(token: string | null) => {
-              console.log('🔍 Token captcha reçu:', token);
               setToken(token);
             }}
           />
@@ -60,9 +61,9 @@ export default function DebugCaptchaPage() {
             }`}
             onClick={() => {
               if (token) {
-                alert('Token captcha valide ! Soumission autorisée.');
+                toast({ title: 'Succès', description: 'Token captcha valide ! Soumission autorisée.' });
               } else {
-                alert('Token captcha manquant ! Soumission bloquée.');
+                toast({ title: 'Erreur', description: 'Token captcha manquant ! Soumission bloquée.', variant: 'destructive' });
               }
             }}
           >

@@ -7,11 +7,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password, token } = body;
 
-    console.log('🔍 Admin login - Debug info:');
-    console.log('📝 Email:', email);
-    console.log('📝 Password provided:', !!password);
-    console.log('📝 Token provided:', !!token);
-    console.log('📝 Token length:', token?.length);
 
     if (!email || !password) {
       return NextResponse.json(
@@ -22,7 +17,6 @@ export async function POST(req: NextRequest) {
 
     // Vérifier reCAPTCHA
     if (!token) {
-      console.log('❌ No reCAPTCHA token provided');
       return NextResponse.json(
         { message: 'Vérification reCAPTCHA requise' },
         { status: 400 }
@@ -35,17 +29,10 @@ export async function POST(req: NextRequest) {
       query: {}
     } as any;
 
-    console.log('📝 Verifying reCAPTCHA...');
     const captcha = await verifyRecaptcha(mockReq);
 
-    console.log('📝 reCAPTCHA verification result:', {
-      success: captcha.success,
-      score: captcha.score,
-      errorCodes: captcha.errorCodes
-    });
 
     if (!captcha.success || (captcha.score !== undefined && captcha.score < 0.5)) {
-      console.log('❌ reCAPTCHA verification failed');
       return NextResponse.json(
         {
           message: "reCAPTCHA verification failed",

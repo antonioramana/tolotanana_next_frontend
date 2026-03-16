@@ -79,7 +79,6 @@ export function useSocket(): UseSocketReturn {
       setSocket(newSocket);
 
       newSocket.on('connect', () => {
-        console.log('Connecté aux notifications en temps réel');
         setIsConnected(true);
       });
 

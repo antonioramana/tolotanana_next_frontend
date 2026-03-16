@@ -4,8 +4,10 @@ import { FiPlus, FiEye, FiEdit, FiTrash2, FiDollarSign, FiCalendar, FiCheck, FiX
 import { WithdrawalsApi, CatalogApi, BankApi, CampaignsApi } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth-client';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { useToast } from '@/hooks/use-toast';
 
 export default function UserWithdrawalsPage() {
+  const { toast } = useToast();
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [bankInfos, setBankInfos] = useState<any[]>([]);
@@ -47,8 +49,6 @@ export default function UserWithdrawalsPage() {
     try {
       // Load all user campaigns, not just active ones
       const data = await CampaignsApi.myCampaigns('?page=1&limit=100');
-      console.log('Campaigns API response:', data);
-      console.log('Campaigns data structure:', JSON.stringify(data, null, 2));
       
       // Try different ways to access the data
       let campaignsData = [];
@@ -60,7 +60,6 @@ export default function UserWithdrawalsPage() {
         campaignsData = data.campaigns;
       }
       
-      console.log('Extracted campaigns:', campaignsData);
       
       // Filter campaigns that have some amount available for withdrawal
       const availableCampaigns = campaignsData.filter((campaign: any) => {
@@ -68,8 +67,6 @@ export default function UserWithdrawalsPage() {
         return currentAmount > 0;
       });
       setCampaigns(availableCampaigns);
-      console.log('All campaigns loaded:', campaignsData.length);
-      console.log('Available campaigns for withdrawal:', availableCampaigns.length);
     } catch (e) {
       console.error('Error loading campaigns:', e);
     }
@@ -78,15 +75,11 @@ export default function UserWithdrawalsPage() {
   const loadBankInfos = async () => {
     try {
       const data = await BankApi.list();
-      console.log('Bank infos API response:', data);
-      console.log('Bank infos data structure:', JSON.stringify(data, null, 2));
       
       // BankApi.list() returns an array directly
       const bankInfosData = Array.isArray(data) ? data : [];
       
-      console.log('Extracted bank infos:', bankInfosData);
       setBankInfos(bankInfosData);
-      console.log('Bank infos loaded:', bankInfosData.length);
     } catch (e) {
       console.error('Error loading bank infos:', e);
     }
@@ -140,7 +133,7 @@ export default function UserWithdrawalsPage() {
       await WithdrawalsApi.delete(id);
       await loadWithdrawals();
     } catch (e) {
-      alert('Erreur lors de la suppression de la demande');
+      toast({ title: 'Erreur', description: 'Erreur lors de la suppression de la demande', variant: 'destructive' });
     }
   };
 

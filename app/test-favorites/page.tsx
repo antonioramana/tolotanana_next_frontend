@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { getStoredUser } from '@/lib/auth-client';
 import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import FavoriteToggle from '@/components/campaign/FavoriteToggle';
 import { useFavorites } from '@/hooks/useFavorites';
 
 export default function TestFavoritesPage() {
+  const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,11 +83,10 @@ export default function TestFavoritesPage() {
                   onClick={async () => {
                     try {
                       const response = await api('/favorites/my-favorites') as any;
-                      console.log('Mes favoris:', response);
-                      alert(`Favoris récupérés: ${response.data.length} campagnes`);
+                      toast({ title: 'Succès', description: `Favoris récupérés: ${response.data.length} campagnes` });
                     } catch (error) {
                       console.error('Erreur API favoris:', error);
-                      alert('Erreur lors de la récupération des favoris');
+                      toast({ title: 'Erreur', description: 'Erreur lors de la récupération des favoris', variant: 'destructive' });
                     }
                   }}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"

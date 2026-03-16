@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FiX, FiSave, FiEdit } from 'react-icons/fi';
 import { CampaignsApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface CampaignUpdateModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export default function CampaignUpdateModal({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,14 +52,14 @@ export default function CampaignUpdateModal({
           title: form.title.trim(),
           content: form.content.trim(),
         });
-        alert('Actualité modifiée avec succès');
+        toast({ title: 'Succès', description: 'Actualité modifiée avec succès' });
       } else {
         // Créer un nouvel update
         await CampaignsApi.createUpdate(campaignId, {
           title: form.title.trim(),
           content: form.content.trim(),
         });
-        alert('Actualité ajoutée avec succès');
+        toast({ title: 'Succès', description: 'Actualité ajoutée avec succès' });
       }
 
       onUpdateAdded();

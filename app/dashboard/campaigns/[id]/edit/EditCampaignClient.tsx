@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CatalogApi, CampaignsApi, UploadApi } from '@/lib/api';
 import { FiArrowLeft, FiSave, FiUpload, FiX, FiHeart } from 'react-icons/fi';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EditCampaignClient() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const campaignId = useMemo(() => (params?.id as string) || '', [params]);
 
   const [loading, setLoading] = useState(true);
@@ -74,12 +76,12 @@ export default function EditCampaignClient() {
 
   const handleSave = async () => {
     if (!form.title || !form.description || !form.categoryId || !form.targetAmount || !form.deadline) {
-      alert('Veuillez remplir tous les champs obligatoires');
+      toast({ title: 'Champs requis', description: 'Veuillez remplir tous les champs obligatoires', variant: 'destructive' });
       return;
     }
     const hasBlob = form.images.some((u) => u.startsWith('blob:'));
     if (hasBlob) {
-      alert('Veuillez attendre que toutes les images soient uploadées');
+      toast({ title: 'Upload en cours', description: 'Veuillez attendre que toutes les images soient uploadées', variant: 'destructive' });
       return;
     }
 
@@ -96,8 +98,7 @@ export default function EditCampaignClient() {
     try {
       setSaving(true);
       const res = await CampaignsApi.update(campaignId, payload);
-      console.log('[EditCampaign] Saved:', res);
-      alert('Campagne mise à jour avec succès');
+      toast({ title: 'Succès', description: 'Campagne mise à jour avec succès' });
       router.push('/dashboard/campaigns');
     } catch (e: any) {
       console.error('[EditCampaign] Save failed:', e);
@@ -106,7 +107,7 @@ export default function EditCampaignClient() {
         const parsed = JSON.parse(e.message);
         message = Array.isArray(parsed?.message) ? parsed.message.join(', ') : (parsed?.message || message);
       } catch {}
-      alert(message);
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }

@@ -66,7 +66,9 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 204) return undefined as unknown as T;
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 async function apiPublic<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -84,7 +86,9 @@ async function apiPublic<T>(path: string, options: RequestInit = {}): Promise<T>
     throw new Error(text || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as unknown as T;
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 function unwrapList<T>(res: any): T[] {

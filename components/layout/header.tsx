@@ -47,7 +47,6 @@ export default function Header({ user: userProp }: { user?: any }) {
   }, [searchParams, router]);
 
   const handleLogout = () => {
-    console.log('Déconnexion utilisateur');
     clearStoredUser();
     // Vider les champs d'authentification dans localStorage
     localStorage.removeItem('auth_form_data');

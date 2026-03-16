@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FiX, FiSave, FiHeart } from 'react-icons/fi';
 import { CampaignsApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface ThankYouMessageModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function ThankYouMessageModal({
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
@@ -47,7 +49,7 @@ export default function ThankYouMessageModal({
 
     try {
       await CampaignsApi.updateThankYouMessage(campaignId, { thankYouMessage: message });
-      alert('Message de remerciement mis à jour avec succès !');
+      toast({ title: 'Succès', description: 'Message de remerciement mis à jour avec succès !' });
       onMessageUpdated();
       onClose();
     } catch (err: any) {

@@ -46,15 +46,6 @@ export default function TestRegisterCaptchaPage() {
     }
 
     try {
-      console.log('🔍 Test Register - Sending data:', {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        role: form.role,
-        phone: form.phone,
-        tokenProvided: !!token,
-        tokenLength: token?.length
-      });
 
       const res = await AuthApi.register({
         firstName: form.firstName,
@@ -66,7 +57,6 @@ export default function TestRegisterCaptchaPage() {
         token: token,
       });
 
-      console.log('✅ Register successful:', res);
       
       const authToken = (res as any).token;
       const user = (res as any).user || {};
@@ -251,7 +241,6 @@ export default function TestRegisterCaptchaPage() {
               <ResponsiveReCAPTCHA
                 sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
                 onChange={(token: string | null) => {
-                  console.log('🔍 Captcha token received:', !!token, token?.length);
                   setToken(token);
                 }}
               />

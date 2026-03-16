@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🔍 Validation don - Début de la requête');
     const body = await req.json();
     const { donationId, status } = body;
     
-    console.log('📝 Données reçues:', { donationId, status });
 
     if (!donationId || !status) {
-      console.log('❌ Données manquantes');
       return NextResponse.json(
         { message: 'Données de validation requises' },
         { status: 400 }
@@ -42,7 +39,6 @@ export async function POST(req: NextRequest) {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
     const backendUrl = `${apiBase}/donations/${donationId}`;
     
-    console.log('🚀 Appel backend:', { url: backendUrl, method: 'PATCH', data: validationData });
     
     let response: Response;
     try {
@@ -62,7 +58,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('📡 Réponse backend:', { status: response.status, ok: response.ok });
 
     const text = await response.text();
     let json: any = null;
@@ -73,7 +68,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!response.ok) {
-      console.log('❌ Erreur backend:', { status: response.status, statusText: response.statusText, body: text });
       return NextResponse.json(
         {
           message: json?.message || response.statusText || 'Erreur lors de la validation du don',
@@ -84,7 +78,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('✅ Succès backend:', json);
     return NextResponse.json(json ?? {});
   } catch (error: any) {
     console.error('Erreur validation don:', error);

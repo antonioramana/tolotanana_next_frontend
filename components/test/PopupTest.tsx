@@ -27,8 +27,6 @@ export default function PopupTest() {
           
           <button
             onClick={() => {
-              console.log('🧪 Test: Affichage du popup');
-              console.log('Message:', testMessage);
               setShowPopup(true);
             }}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
@@ -51,7 +49,6 @@ export default function PopupTest() {
             {/* Bouton de fermeture */}
             <button
               onClick={() => {
-                console.log('🔄 Fermeture du popup');
                 setShowPopup(false);
               }}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -108,7 +105,6 @@ export default function PopupTest() {
             {/* Bouton d'action */}
             <button
               onClick={() => {
-                console.log('✅ Test terminé avec succès');
                 setShowPopup(false);
               }}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"

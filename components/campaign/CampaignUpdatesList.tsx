@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FiEdit, FiTrash2, FiCalendar, FiUser } from 'react-icons/fi';
 import { CampaignsApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface CampaignUpdate {
   id: string;
@@ -31,6 +32,7 @@ export default function CampaignUpdatesList({
   const [updates, setUpdates] = useState<CampaignUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadUpdates();
@@ -73,7 +75,7 @@ export default function CampaignUpdatesList({
 
     try {
       await CampaignsApi.deleteUpdate(campaignId, updateId);
-      alert('Mise à jour supprimée avec succès');
+      toast({ title: 'Succès', description: 'Mise à jour supprimée avec succès' });
       // Recharger la liste des updates
       loadUpdates();
     } catch (err: any) {
@@ -99,7 +101,7 @@ export default function CampaignUpdatesList({
         }
       }
       
-      alert(errorMessage);
+      toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
     }
   };
 

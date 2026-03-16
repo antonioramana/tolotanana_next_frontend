@@ -515,6 +515,7 @@ export default function AdminUsersPage() {
 
 // Edit User Modal Component
 function EditUserModal({ user, onClose, onSave }: { user: any; onClose: () => void; onSave: (data: any, captchaToken: string, adminPassword?: string) => void }) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     firstName: user.firstName || '',
     lastName: user.lastName || '',
@@ -543,13 +544,13 @@ function EditUserModal({ user, onClose, onSave }: { user: any; onClose: () => vo
     e.preventDefault();
     
     if (!captchaToken) {
-      alert('Veuillez vérifier le reCAPTCHA avant de continuer.');
+      toast({ title: 'Vérification requise', description: 'Veuillez vérifier le reCAPTCHA avant de continuer.', variant: 'destructive' });
       return;
     }
 
     // Vérifier le mot de passe si le rôle change
     if (roleChanged && !adminPassword.trim()) {
-      alert('Veuillez saisir votre mot de passe pour modifier le rôle.');
+      toast({ title: 'Mot de passe requis', description: 'Veuillez saisir votre mot de passe pour modifier le rôle.', variant: 'destructive' });
       return;
     }
 
@@ -704,6 +705,7 @@ function EditUserModal({ user, onClose, onSave }: { user: any; onClose: () => vo
 
 // Add User Modal Component
 function AddUserModal({ onClose, onSave }: { onClose: () => void; onSave: (data: any, captchaToken: string, avatarFile?: File) => void }) {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -719,11 +721,11 @@ function AddUserModal({ onClose, onSave }: { onClose: () => void; onSave: (data:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaToken) {
-      alert('Veuillez vérifier le reCAPTCHA avant de continuer.');
+      toast({ title: 'Vérification requise', description: 'Veuillez vérifier le reCAPTCHA avant de continuer.', variant: 'destructive' });
       return;
     }
     if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.password.trim()) {
-      alert('Merci de remplir les champs obligatoires.');
+      toast({ title: 'Champs requis', description: 'Merci de remplir les champs obligatoires.', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);

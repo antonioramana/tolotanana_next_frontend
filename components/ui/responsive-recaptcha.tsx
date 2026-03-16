@@ -19,11 +19,6 @@ export default function ResponsiveReCAPTCHA({
 
   // Debug: Vérifier si la sitekey est définie
   useEffect(() => {
-    console.log('🔍 ResponsiveReCAPTCHA - Debug info:');
-    console.log('📝 Sitekey prop:', sitekey);
-    console.log('📝 Sitekey length:', sitekey?.length);
-    console.log('📝 Sitekey defined:', !!sitekey);
-    console.log('📝 Environment variable:', process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
   }, [sitekey]);
 
   useEffect(() => {

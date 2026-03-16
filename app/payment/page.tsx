@@ -47,7 +47,6 @@ export default function PaymentPage() {
       timestamp: new Date().toISOString(),
     };
     
-    console.log('Traitement du paiement:', payment);
     
     // Simulate payment processing
     setTimeout(() => {

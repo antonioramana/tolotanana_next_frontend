@@ -13,7 +13,6 @@ export default function TestNotificationsPage() {
     setIsLoading(true);
     try {
       const response = await AuthApi.sendTestNotification();
-      console.log('Notification de test envoyée:', response);
     } catch (error) {
       console.error('Erreur lors de l\'envoi de la notification de test:', error);
     } finally {

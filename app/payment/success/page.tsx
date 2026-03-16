@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiCheckCircle, FiDownload, FiShare2, FiHeart, FiHome } from 'react-icons/fi';
 import { getStoredUser } from '@/lib/auth-client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PaymentSuccessPage() {
+  const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   useEffect(() => {
     setCurrentUser(getStoredUser());
@@ -24,13 +26,11 @@ export default function PaymentSuccessPage() {
   };
 
   const handleDownloadReceipt = () => {
-    console.log('Téléchargement du reçu:', transactionDetails);
-    alert('Le reçu sera téléchargé (fonctionnalité simulée)');
+    toast({ title: 'Info', description: 'Le reçu sera téléchargé (fonctionnalité simulée)' });
   };
 
   const handleShare = () => {
-    console.log('Partage du don:', transactionDetails);
-    alert('Partage sur les réseaux sociaux (fonctionnalité simulée)');
+    toast({ title: 'Info', description: 'Partage sur les réseaux sociaux (fonctionnalité simulée)' });
   };
 
   return (

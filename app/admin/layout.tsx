@@ -17,15 +17,12 @@ export default function AdminLayout({
 
   useEffect(() => {
     const user = getStoredUser();
-    console.log('Layout admin - Utilisateur récupéré:', user);
     
     if (!user) {
-      console.log('Layout admin - Pas d\'utilisateur, redirection vers /admin-login');
       router.replace('/admin-login');
       return;
     }
     if (user.role !== 'admin') {
-      console.log('Layout admin - Utilisateur non admin, redirection vers /dashboard');
       router.replace('/dashboard');
       return;
     }
@@ -35,7 +32,6 @@ export default function AdminLayout({
       return;
     }
     
-    console.log('Layout admin - Utilisateur admin validé:', user);
     setCurrentUser(user);
     setIsCheckingAuth(false);
 

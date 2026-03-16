@@ -66,9 +66,6 @@ export default function AdminLoginPage() {
       const token = (result as any).token;
       const user = (result as any).user || {};
       
-      console.log('Réponse de connexion admin:', result);
-      console.log('Token:', token);
-      console.log('User:', user);
       
       // Vérifier que l'utilisateur est bien un admin
       if (user.role !== 'admin') {
@@ -84,7 +81,6 @@ export default function AdminLoginPage() {
       // Sauvegarder les données utilisateur avec la même méthode que le modal
       setStoredUser({ ...user, token });
       
-      console.log('Données sauvegardées:', { ...user, token });
       
       // Vider les champs du formulaire après connexion réussie
       setFormData({

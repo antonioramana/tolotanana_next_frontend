@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit, FiTrash2, FiSearch, FiTag, FiSave, FiX } from 'react-icons/fi';
 import { getStoredToken } from '@/lib/auth-client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Category {
   id: string;
@@ -15,6 +16,7 @@ interface Category {
 }
 
 export default function AdminCategoriesPage() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function AdminCategoriesPage() {
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      alert('Le nom de la catégorie est requis');
+      toast({ title: 'Champ requis', description: 'Le nom de la catégorie est requis', variant: 'destructive' });
       return;
     }
 
@@ -92,7 +94,7 @@ export default function AdminCategoriesPage() {
       setFormData({ name: '', description: '' });
       loadCategories();
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la création');
+      toast({ title: 'Erreur', description: e.message || 'Erreur lors de la création', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +102,7 @@ export default function AdminCategoriesPage() {
 
   const handleEdit = async () => {
     if (!editingCategory || !formData.name.trim()) {
-      alert('Le nom de la catégorie est requis');
+      toast({ title: 'Champ requis', description: 'Le nom de la catégorie est requis', variant: 'destructive' });
       return;
     }
 
@@ -129,7 +131,7 @@ export default function AdminCategoriesPage() {
       setFormData({ name: '', description: '' });
       loadCategories();
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la modification');
+      toast({ title: 'Erreur', description: e.message || 'Erreur lors de la modification', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +162,7 @@ export default function AdminCategoriesPage() {
 
       loadCategories();
     } catch (e: any) {
-      alert(e.message || 'Erreur lors de la suppression');
+      toast({ title: 'Erreur', description: e.message || 'Erreur lors de la suppression', variant: 'destructive' });
     }
   };
 

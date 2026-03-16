@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 
 interface CampaignCardProps {
   campaign: Campaign | any;
+  viewMode?: 'grid' | 'list';
 }
 
 const normalizeImageUrl = (url?: string | null) => {
@@ -22,7 +23,7 @@ const normalizeImageUrl = (url?: string | null) => {
   return url;
 };
 
-export default function CampaignCard({ campaign }: CampaignCardProps) {
+export default function CampaignCard({ campaign, viewMode = 'grid' }: CampaignCardProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   
@@ -58,11 +59,133 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
     );
   };
 
+  const imageUrl = normalizeImageUrl(campaign.images && campaign.images[0]) || 'https://images.pexels.com/photos/6224/hands-people-woman-working.jpg?auto=compress&cs=tinysrgb&w=800';
+  const creatorName = campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim();
+  const categoryName = campaign.category?.name || campaign.category || '—';
+
+  if (viewMode === 'list') {
+    return (
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+        <div className="flex flex-col sm:flex-row">
+          {/* Image */}
+          <div className="relative sm:w-64 flex-shrink-0">
+            <img
+              src={imageUrl}
+              alt={campaign.title}
+              className="w-full h-48 sm:h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute top-3 left-3">
+              {getStatusBadge()}
+            </div>
+            <div className="absolute top-3 right-3 flex gap-2">
+              {currentUser && (
+                <FavoriteToggle
+                  isFavoris={favorites.isFavoris}
+                  onToggle={favorites.toggleFavorite}
+                  isLoading={favorites.isLoading}
+                  size="sm"
+                  className="shadow-lg"
+                />
+              )}
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="bg-white/90 hover:bg-white p-1.5 rounded-full transition-colors shadow-lg"
+                aria-label="Partager"
+              >
+                <FiShare2 className="w-4 h-4 text-gray-700" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-orange-600 transition-colors">
+                  {campaign.title}
+                </h3>
+                <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                  {categoryName}
+                </span>
+              </div>
+              <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                {campaign.description}
+              </p>
+
+              {/* Progress */}
+              <div className="mb-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium text-gray-700">
+                    {formatMoney(totalRaised)} collectés
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {progressPercentage}% — Objectif: {formatMoney(targetAmount)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span className="flex items-center">
+                  <FiUsers className="w-4 h-4 mr-1" />
+                  {campaign.totalDonors || 0} donateurs
+                </span>
+                <span className="flex items-center">
+                  <FiCalendar className="w-4 h-4 mr-1" />
+                  {new Date(campaign.deadline).toLocaleDateString('fr-FR')}
+                </span>
+                <span className="flex items-center">
+                  <img
+                    src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
+                    alt={creatorName}
+                    className="w-5 h-5 rounded-full mr-1"
+                  />
+                  {creatorName}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {currentUser && (
+                  <FavoriteButton
+                    campaignId={campaign.id}
+                    initialIsFavoris={campaign.isFavoris || false}
+                    variant="card"
+                  />
+                )}
+                <Link
+                  href={`/campaigns/${campaign.id}`}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Voir plus
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ShareModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          campaignTitle={campaign.title}
+          campaignId={campaign.id}
+        />
+      </div>
+    );
+  }
+
+  // Grid mode (default)
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group">
       <div className="relative">
         <img
-          src={normalizeImageUrl(campaign.images && campaign.images[0]) || 'https://images.pexels.com/photos/6224/hands-people-woman-working.jpg?auto=compress&cs=tinysrgb&w=800'}
+          src={imageUrl}
           alt={campaign.title}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -99,14 +222,14 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           <p className="text-gray-600 text-sm line-clamp-3 mb-3">
             {campaign.description}
           </p>
-          
+
           <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
             <span className="flex items-center">
               <FiUsers className="w-4 h-4 mr-1" />
               {campaign.totalDonors || 0} donateurs
             </span>
             <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
-              {campaign.category?.name || campaign.category || '—'}
+              {categoryName}
             </span>
           </div>
         </div>
@@ -145,11 +268,11 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <img
-              src={`https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop`}
-              alt={campaign.createdByName || ''}
+              src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
+              alt={creatorName}
               className="w-6 h-6 rounded-full mr-2"
             />
-            <span className="text-sm text-gray-600">{campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</span>
+            <span className="text-sm text-gray-600">{creatorName}</span>
           </div>
           <div className="flex items-center space-x-2">
             {currentUser && (
@@ -169,7 +292,6 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         </div>
       </div>
 
-      {/* Share Modal */}
       <ShareModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}

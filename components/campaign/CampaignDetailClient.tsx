@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { getStoredUser, getStoredToken } from '@/lib/auth-client';
-import { FiShare2, FiCalendar, FiUsers, FiTrendingUp, FiClock, FiX, FiPlay, FiHeart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiShare2, FiCalendar, FiUsers, FiClock, FiX, FiPlay, FiHeart, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { DonationsApi, BankApi, CampaignThankYouMessagesApi, PublicPlatformFeesApi, API_BASE } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -116,26 +116,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
 
 
 
-  // Debug: log raw campaign data
-  useEffect(() => {
-    // Deep copy to avoid proxies and circular structures when logging
-    try {
-      const safe = JSON.parse(JSON.stringify(campaign));
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] campaign payload:', safe);
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] donations:', safe?.donations);
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] category:', safe?.category);
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] creator:', safe?.creator);
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] stats:', safe?.stats, 'counts:', safe?._count);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log('[CampaignDetail] campaign (raw):', campaign);
-    }
-  }, [campaign]);
 
   const formatAmount = (amount: number) => {
     if (amount >= 1000000) {
@@ -160,7 +140,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
   const displayTotalRaised = baseTotalRaised + optimisticAmount;
   const displayTotalDonors = (campaign.totalDonors || 0) + optimisticDonors;
   const targetAmount = typeof campaign.targetAmount === 'string' ? parseFloat(campaign.targetAmount) : campaign.targetAmount || 0;
-  const rating = typeof campaign.rating === 'string' ? parseFloat(campaign.rating) : (campaign.rating || 0);
   const deadlineDate = new Date(campaign.deadline);
   const daysLeft = Math.ceil((deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
   const isExpired = deadlineDate < new Date();
@@ -320,11 +299,7 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   <FavoriteToggle
                     isFavoris={favorites.isFavoris}
                     onToggle={currentUser ? favorites.toggleFavorite : () => {
-                      toast({
-                        title: 'Connexion requise',
-                        description: 'Veuillez vous connecter pour suivre cette campagne',
-                        variant: 'destructive',
-                      });
+                      router.push(`${window.location.pathname}?auth=login`);
                     }}
                     isLoading={favorites.isLoading}
                     size="md"
@@ -367,10 +342,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                     <span className={daysLeft > 0 ? 'text-green-600' : 'text-red-600'}>
                       {daysLeft > 0 ? `${daysLeft} jours restants` : 'Campagne terminée'}
                     </span>
-                  </div>
-                  <div className="flex items-center">
-                    <FiTrendingUp className="w-4 h-4 mr-1" />
-                    <span>Note: {rating}/5</span>
                   </div>
                 </div>
 
@@ -602,7 +573,9 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   initialIsFavoris={campaign.isFavoris || false}
                   variant="sidebar"
                   isFavoris={favorites.isFavoris}
-                  onToggle={favorites.toggleFavorite}
+                  onToggle={currentUser ? favorites.toggleFavorite : () => {
+                    router.push(`${window.location.pathname}?auth=login`);
+                  }}
                   isLoading={favorites.isLoading}
                 />
                 <button 
@@ -627,10 +600,6 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                   <p className="font-medium text-gray-900">{campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</p>
                   <p className="text-sm text-gray-600">Organisateur</p>
                 </div>
-              </div>
-              <div className="flex items-center text-sm text-gray-600 mb-2">
-                <FiTrendingUp className="w-4 h-4 mr-2" />
-                <span>Note: {rating}/5</span>
               </div>
               {campaign.isVerified && (
                 <div className="flex items-center text-sm text-green-600">

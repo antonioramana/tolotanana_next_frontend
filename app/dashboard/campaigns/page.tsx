@@ -7,9 +7,11 @@ import { FiPlus, FiEdit, FiEye, FiPause, FiPlay, FiTrash2, FiTrendingUp, FiCalen
 import CampaignUpdateModal from '@/components/campaign/CampaignUpdateModal';
 import CampaignUpdatesList from '@/components/campaign/CampaignUpdatesList';
 import ThankYouMessageModal from '@/components/campaign/ThankYouMessageModal';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MyCampaignsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,27 +131,26 @@ export default function MyCampaignsPage() {
           break;
         case 'pause':
           await CampaignsApi.updateStatus(campaignId, 'paused');
-          alert('Campagne mise en pause');
+          toast({ title: 'Succès', description: 'Campagne mise en pause' });
           loadCampaigns();
           break;
         case 'resume':
           await CampaignsApi.updateStatus(campaignId, 'active');
-          alert('Campagne reprise');
+          toast({ title: 'Succès', description: 'Campagne reprise' });
           loadCampaigns();
           break;
         case 'delete':
           if (confirm('Êtes-vous sûr de vouloir supprimer cette campagne ?')) {
             await CampaignsApi.delete(campaignId);
-            alert('Campagne supprimée');
+            toast({ title: 'Succès', description: 'Campagne supprimée' });
             loadCampaigns();
           }
           break;
         default:
-          console.log(`Action ${action} sur la campagne ${campaignId}`);
       }
     } catch (err) {
       console.error(`Failed to ${action} campaign:`, err);
-      alert(`Erreur lors de l'action "${action}"`);
+      toast({ title: 'Erreur', description: `Erreur lors de l'action "${action}"`, variant: 'destructive' });
     }
   };
 

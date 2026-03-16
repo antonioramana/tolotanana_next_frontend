@@ -1,9 +1,9 @@
 import React from 'react';
 import { FiHeart } from 'react-icons/fi';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useToast } from '@/hooks/use-toast';
 import { getStoredUser } from '@/lib/auth-client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface FavoriteButtonProps {
   campaignId: string;
@@ -26,8 +26,8 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   isLoading: externalIsLoading
 }) => {
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const { toast } = useToast();
-  
+  const router = useRouter();
+
   useEffect(() => {
     setCurrentUser(getStoredUser());
   }, []);
@@ -81,13 +81,9 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   // (le composant parent gère la vérification de connexion)
   if (!currentUser && !externalOnToggle) {
     return (
-      <button 
+      <button
         onClick={() => {
-          toast({
-            title: 'Connexion requise',
-            description: 'Veuillez vous connecter pour suivre une campagne',
-            variant: 'destructive',
-          });
+          router.push(`${window.location.pathname}?auth=login`);
         }}
         className={`${styles.base} ${styles.normal} ${className}`}
       >

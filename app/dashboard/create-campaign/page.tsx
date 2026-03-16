@@ -7,9 +7,11 @@ import { FiUpload, FiX, FiCalendar, FiDollarSign, FiFileText, FiImage } from 're
 import { BankApi, UploadApi, CatalogApi } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth-client';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CreateCampaignPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     title: '',
@@ -38,7 +40,6 @@ export default function CreateCampaignPage() {
     // Load categories from API
     CatalogApi.categories().then((list) => {
       setCategories(Array.isArray(list) ? list : []);
-      console.log('[CreateCampaign] Loaded categories:', list);
     }).catch((err) => {
       console.error('[CreateCampaign] Failed to load categories', err);
       setCategories([]);
@@ -50,7 +51,6 @@ export default function CreateCampaignPage() {
       BankApi.list().then((list) => {
         const d = Array.isArray(list) ? list.find((b) => b.isDefault) || list[0] || null : null;
         setDefaultBank(d);
-        console.log('[CreateCampaign] Default bank info:', d, 'All bank infos:', list);
       }).catch((err) => {
         console.error('[CreateCampaign] Failed to load bank infos', err);
         setDefaultBank(null);
@@ -104,9 +104,7 @@ export default function CreateCampaignPage() {
     const uploaded: string[] = [];
     for (const file of files.slice(0, 5 - formData.images.length)) {
       try {
-        console.log('[CreateCampaign] Uploading file:', file.name);
         const url = await UploadApi.uploadFile(file);
-        console.log('[CreateCampaign] Uploaded to:', url);
         uploaded.push(url);
       } catch (err) {
         console.error('[CreateCampaign] Upload failed for:', file.name, err);
@@ -118,7 +116,6 @@ export default function CreateCampaignPage() {
       setFormData((prev) => {
         const existingUrls = prev.images.filter((u) => !u.startsWith('blob:'));
         const newUrls = [...existingUrls, ...uploaded].slice(0, 5);
-        console.log('[CreateCampaign] Final image URLs:', newUrls);
         return { ...prev, images: newUrls };
       });
     }
@@ -132,7 +129,7 @@ export default function CreateCampaignPage() {
     if (!validateStep(2)) return;
     if (!defaultBank) {
       console.warn('[CreateCampaign] Submission blocked: no default bank info');
-      alert('Veuillez définir une information bancaire par défaut dans Paramètres.');
+      toast({ title: 'Information manquante', description: 'Veuillez définir une information bancaire par défaut dans Paramètres.', variant: 'destructive' });
       return;
     }
 
@@ -140,12 +137,12 @@ export default function CreateCampaignPage() {
     const blobImages = formData.images.filter((u) => u.startsWith('blob:'));
     if (blobImages.length > 0) {
       console.warn('[CreateCampaign] Submission blocked: still have blob URLs:', blobImages);
-      alert('Veuillez attendre que toutes les images soient uploadées avant de soumettre.');
+      toast({ title: 'Upload en cours', description: 'Veuillez attendre que toutes les images soient uploadées avant de soumettre.', variant: 'destructive' });
       return;
     }
 
     if (!captchaToken) {
-      alert('Veuillez vérifier le reCAPTCHA avant de créer la campagne.');
+      toast({ title: 'Vérification requise', description: 'Veuillez vérifier le reCAPTCHA avant de créer la campagne.', variant: 'destructive' });
       return;
     }
 
@@ -165,11 +162,7 @@ export default function CreateCampaignPage() {
     try {
       const token = getStoredToken() || '';
 
-      console.log('[CreateCampaign] Submitting payload:', payload);
-      console.log('[CreateCampaign] Image URLs being sent:', payload.images);
-      console.log('[CreateCampaign] Each image URL validation:');
       payload.images.forEach((url: string, index: number) => {
-        console.log(`  [${index}] "${url}" - starts with http: ${url.startsWith('http:')}, starts with https: ${url.startsWith('https:')}`);
       });
 
       // Utiliser la nouvelle API interne avec protection reCAPTCHA
@@ -188,19 +181,18 @@ export default function CreateCampaignPage() {
       const rawText = await res.text();
       let parsed: any = null;
       try { parsed = rawText ? JSON.parse(rawText) : null; } catch {}
-      console.log('[CreateCampaign] Response status:', res.status, 'body:', parsed ?? rawText);
 
       if (!res.ok) {
         const message = parsed?.message || parsed?.error || rawText || 'Erreur inconnue';
-        alert(`Échec de création de la campagne: ${Array.isArray(message) ? message.join(', ') : message}`);
+        toast({ title: 'Échec', description: `Échec de création de la campagne: ${Array.isArray(message) ? message.join(', ') : message}`, variant: 'destructive' });
         return;
       }
 
-      alert('Campagne créée avec succès ! Elle sera examinée par notre équipe avant publication.');
+      toast({ title: 'Succès', description: 'Campagne créée avec succès ! Elle sera examinée par notre équipe avant publication.' });
       router.push('/dashboard/campaigns');
     } catch (e) {
       console.error('[CreateCampaign] Exception during submit:', e);
-      alert("Échec de création de la campagne. Veuillez vérifier les champs et réessayer.");
+      toast({ title: 'Échec', description: 'Échec de création de la campagne. Veuillez vérifier les champs et réessayer.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }

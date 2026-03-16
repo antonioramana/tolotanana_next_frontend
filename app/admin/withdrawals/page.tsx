@@ -5,8 +5,10 @@ import { WithdrawalsApi, CatalogApi } from '@/lib/api';
 import SimplePagination from '@/components/ui/simple-pagination';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
 import { getStoredToken } from '@/lib/auth-client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminWithdrawalsPage() {
+  const { toast } = useToast();
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +130,7 @@ export default function AdminWithdrawalsPage() {
 
   const confirmValidation = async () => {
     if (!selectedWithdrawal || !validationAction || !captchaToken) {
-      alert('Veuillez compléter la vérification reCAPTCHA');
+      toast({ title: 'Vérification requise', description: 'Veuillez compléter la vérification reCAPTCHA', variant: 'destructive' });
       return;
     }
 
@@ -153,7 +155,7 @@ export default function AdminWithdrawalsPage() {
         throw new Error(errorData.message || 'Erreur lors de la validation');
       }
 
-      alert(`Demande ${validationAction === 'approved' ? 'approuvée' : 'rejetée'} avec succès`);
+      toast({ title: 'Succès', description: `Demande ${validationAction === 'approved' ? 'approuvée' : 'rejetée'} avec succès` });
       await loadWithdrawals();
       setShowValidationModal(false);
       setSelectedWithdrawal(null);
@@ -161,7 +163,7 @@ export default function AdminWithdrawalsPage() {
       setCaptchaToken(null);
     } catch (error: any) {
       console.error('Erreur validation retrait:', error);
-      alert(error.message || 'Erreur lors de la validation');
+      toast({ title: 'Erreur', description: error.message || 'Erreur lors de la validation', variant: 'destructive' });
     } finally {
       setValidatingWithdrawals(prev => {
         const newSet = new Set(prev);

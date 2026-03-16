@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import CampaignCard from '@/components/ui/campaign-card';
 import CampaignCardSkeleton from '@/components/ui/CampaignCardSkeleton';
 import LoadingDots from '@/components/ui/LoadingDots';
-import { FiSearch, FiFilter, FiGrid, FiList, FiTrendingUp, FiClock, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiGrid, FiList, FiTrendingUp, FiClock, FiDollarSign, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { CatalogApi } from '@/lib/api';
 
 export default function CampaignsPage() {
@@ -12,6 +12,8 @@ export default function CampaignsPage() {
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -70,6 +72,11 @@ export default function CampaignsPage() {
     return () => { cancelled = true; };
   }, [searchTerm, selectedCategory]);
 
+  // Réinitialiser la page quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, sortBy]);
+
   const filteredCampaigns = useMemo(() => {
     let filtered = [...campaigns];
     switch (sortBy) {
@@ -88,6 +95,12 @@ export default function CampaignsPage() {
     }
     return filtered;
   }, [campaigns, sortBy]);
+
+  const totalPages = Math.ceil(filteredCampaigns.length / ITEMS_PER_PAGE);
+  const paginatedCampaigns = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCampaigns.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredCampaigns, currentPage]);
 
   const formatAmount = (amount: number) => {
     if (!amount || isNaN(amount)) return '0K Ar';
@@ -240,16 +253,62 @@ export default function CampaignsPage() {
           <>
             {viewMode === 'grid' ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredCampaigns.map((campaign) => (
-                  <CampaignCard key={campaign.id} campaign={campaign} />
+                {paginatedCampaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} viewMode="grid" />
                 ))}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredCampaigns.map((campaign) => (
-                  <CampaignCard key={campaign.id} campaign={campaign} />
+              <div className="flex flex-col gap-6">
+                {paginatedCampaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id} campaign={campaign} viewMode="list" />
                 ))}
               </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center mt-10 gap-2">
+                <button
+                  onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <FiChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-orange-500 text-white shadow-md'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Suivant
+                  <FiChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Indicateur de page */}
+            {totalPages > 1 && (
+              <p className="text-center text-sm text-gray-500 mt-3">
+                Page {currentPage} sur {totalPages} ({filteredCampaigns.length} campagnes)
+              </p>
             )}
 
             {!loadingCampaigns && filteredCampaigns.length === 0 && (
@@ -259,7 +318,7 @@ export default function CampaignsPage() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune campagne trouvée</h3>
                 <p className="text-gray-600">
-                  {searchTerm || selectedCategory 
+                  {searchTerm || selectedCategory
                     ? 'Essayez de modifier vos critères de recherche'
                     : 'Aucune campagne disponible pour le moment'}
                 </p>
