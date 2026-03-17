@@ -404,4 +404,40 @@ export const MaintenanceApi = {
   updateMessage: (message: string) => api<any>('/maintenance/message', { method: 'PATCH', body: JSON.stringify({ message }) }),
 };
 
+// === KYC API ===
+export const KycApi = {
+  // User endpoints
+  submit: async (formData: FormData) => {
+    const token = getAuthToken();
+    const res = await fetch(`${API_BASE}/kyc/submit`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData, // multipart/form-data
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  getStatus: () => api<any>('/kyc/status'),
+
+  // Admin endpoints
+  list: (params?: { status?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api<any>(`/admin/kyc?${query.toString()}`);
+  },
+  getById: (id: string) => api<any>(`/admin/kyc/${id}`),
+  review: (id: string, data: { action: 'approved' | 'rejected'; rejectionReason?: string }) =>
+    api<any>(`/admin/kyc/${id}/review`, { method: 'PATCH', body: JSON.stringify(data) }),
+  stats: () => api<any>('/admin/kyc/stats'),
+  getDocumentUrl: (filename: string) => `${API_BASE}/admin/kyc/document/${filename}`,
+};
+
 export { api, apiPublic, getAuthToken, API_BASE };

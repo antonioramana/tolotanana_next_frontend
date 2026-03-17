@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FiHome, FiPlus, FiList, FiBarChart2, FiUser, FiSettings,
-  FiUsers, FiFlag, FiDollarSign, FiTrendingUp, FiHeart, FiCreditCard, FiCheckCircle, FiMessageSquare, FiFileText, FiTag
+  FiUsers, FiFlag, FiDollarSign, FiTrendingUp, FiHeart, FiCreditCard, FiCheckCircle, FiMessageSquare, FiFileText, FiTag, FiShield
 } from 'react-icons/fi';
 
 interface SidebarProps {
@@ -18,6 +18,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
     { icon: FiPlus, label: 'Nouvelle campagne', href: '/dashboard/create-campaign' },
     { icon: FiList, label: 'Mes campagnes', href: '/dashboard/campaigns' },
     { icon: FiDollarSign, label: 'Retraits', href: '/dashboard/withdrawals' },
+    { icon: FiShield, label: 'Vérification', href: '/dashboard/verification' },
     { icon: FiUser, label: 'Profil', href: '/dashboard/profile' },
     { icon: FiSettings, label: 'Paramètres', href: '/dashboard/settings' },
   ];
@@ -30,7 +31,8 @@ export default function Sidebar({ userRole }: SidebarProps) {
     { icon: FiUsers, label: 'Utilisateurs', href: '/admin/users' },
     { icon: FiCreditCard, label: 'Transactions', href: '/admin/transactions' },
     { icon: FiTrendingUp, label: 'Retraits', href: '/admin/withdrawals' },
-    { icon: FiCheckCircle, label: 'Vérification', href: '/admin/campaign-verification' },
+    { icon: FiCheckCircle, label: 'Vérif. Campagnes', href: '/admin/campaign-verification' },
+    { icon: FiShield, label: 'Vérif. KYC', href: '/admin/kyc-verification' },
     { icon: FiMessageSquare, label: 'Messages Contact', href: '/admin/contact' },
     { icon: FiSettings, label: 'Paramètres', href: '/admin/settings' },
     { icon: FiUser, label: 'Mon compte', href: '/admin/account-settings' },
