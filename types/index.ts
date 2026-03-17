@@ -8,6 +8,7 @@ export interface User {
   phone?: string;
   createdAt: string;
   isVerified: boolean;
+  emailVerified: boolean;
   bankInfo?: BankInfo[];
 }
 

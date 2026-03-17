@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FiUser, FiMail, FiPhone, FiCalendar, FiEdit3, FiSave, FiX, FiUpload, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { UsersApi, CampaignsApi, UploadApi } from '@/lib/api';
 import { getStoredUser, setStoredUser } from '@/lib/auth-client';
+import VerifiedBadge from '@/components/ui/verified-badge';
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -247,9 +248,9 @@ export default function UserProfilePage() {
             <div className="flex-shrink-0">
               <div className="relative w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden ring-1 ring-gray-200">
                 {(editing ? (formData.avatar || profile?.avatar) : profile?.avatar) ? (
-                  <img 
-                    src={editing ? (formData.avatar || profile?.avatar) : profile?.avatar} 
-                    alt="Avatar" 
+                  <img
+                    src={editing ? (formData.avatar || profile?.avatar) : profile?.avatar}
+                    alt="Avatar"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -257,6 +258,11 @@ export default function UserProfilePage() {
                 )}
                 {editing && formData.avatar && (
                   <span className="absolute bottom-1 inset-x-0 mx-auto w-fit text-[10px] px-2 py-0.5 rounded-full bg-black/60 text-white">Aperçu</span>
+                )}
+                {!editing && profile?.isVerified && (
+                  <span className="absolute -bottom-0.5 -right-0.5">
+                    <VerifiedBadge size="md" />
+                  </span>
                 )}
               </div>
               {editing && (
@@ -367,10 +373,7 @@ export default function UserProfilePage() {
                   </label>
                   <p className="text-gray-900 flex items-center">
                     {profile?.isVerified ? (
-                      <>
-                        <FiCheck className="w-4 h-4 mr-2 text-green-500" />
-                        <span className="text-green-600">Vérifié</span>
-                      </>
+                      <VerifiedBadge size="md" showLabel />
                     ) : (
                       <>
                         <FiAlertCircle className="w-4 h-4 mr-2 text-yellow-500" />

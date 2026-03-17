@@ -5,6 +5,7 @@ import { FiShield, FiEye, FiCheck, FiX, FiSearch, FiFilter, FiClock, FiUser, FiH
 import { KycApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import SecureImage from '@/components/ui/secure-image';
+import UserAvatar from '@/components/ui/user-avatar';
 
 export default function AdminKycVerificationPage() {
   const { toast } = useToast();
@@ -180,11 +181,7 @@ export default function AdminKycVerificationPage() {
                   <tr key={kyc.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={kyc.user?.avatar || '/placeholder-avatar.png'}
-                          alt=""
-                          className="w-9 h-9 rounded-full object-cover"
-                        />
+                        <UserAvatar src={kyc.user?.avatar} alt={`${kyc.user?.firstName} ${kyc.user?.lastName}`} size="md" />
                         <div>
                           <p className="font-medium text-gray-900 text-sm">
                             {kyc.user?.firstName} {kyc.user?.lastName}
@@ -263,11 +260,7 @@ export default function AdminKycVerificationPage() {
               {/* User info */}
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-4">
-                  <img
-                    src={selectedKyc.user?.avatar || '/placeholder-avatar.png'}
-                    alt=""
-                    className="w-14 h-14 rounded-full object-cover"
-                  />
+                  <UserAvatar src={selectedKyc.user?.avatar} alt={`${selectedKyc.user?.firstName} ${selectedKyc.user?.lastName}`} size="lg" />
                   <div>
                     <p className="font-semibold text-gray-900">{selectedKyc.user?.firstName} {selectedKyc.user?.lastName}</p>
                     <p className="text-sm text-gray-600">{selectedKyc.user?.email}</p>

@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiLock, FiTrash2, FiSave, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiTrash2, FiSave, FiEye, FiEyeOff, FiEdit3, FiX, FiUpload, FiPhone } from 'react-icons/fi';
 import { useToast } from '@/hooks/use-toast';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
-import { getStoredToken, clearStoredUser } from '@/lib/auth-client';
+import { getStoredToken, getStoredUser, setStoredUser, clearStoredUser } from '@/lib/auth-client';
+import { UsersApi, UploadApi } from '@/lib/api';
+import UserAvatar from '@/components/ui/user-avatar';
+import VerifiedBadge from '@/components/ui/verified-badge';
 
 export default function AdminAccountSettingsPage() {
   const { toast } = useToast();
@@ -33,6 +36,17 @@ export default function AdminAccountSettingsPage() {
   const [passwordCaptchaToken, setPasswordCaptchaToken] = useState<string | null>(null);
   const [deleteCaptchaToken, setDeleteCaptchaToken] = useState<string | null>(null);
   
+  // États pour édition profil
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    avatar: '',
+  });
+
   // États pour affichage des mots de passe
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -46,30 +60,15 @@ export default function AdminAccountSettingsPage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const token = getStoredToken() || '';
-
-      if (!token) {
-        toast({
-          title: 'Erreur',
-          description: 'Vous devez être connecté',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750'}/users/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement du profil');
-      }
-
-      const data = await response.json();
+      const data = await UsersApi.getProfile();
       setProfile(data);
       setEmailForm(prev => ({ ...prev, newEmail: data.email || '' }));
+      setProfileForm({
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        phone: data.phone || '',
+        avatar: data.avatar || '',
+      });
     } catch (error: any) {
       toast({
         title: 'Erreur',
@@ -79,6 +78,51 @@ export default function AdminAccountSettingsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const url = await UploadApi.uploadFile(file);
+      setProfileForm(prev => ({ ...prev, avatar: url }));
+    } catch {
+      toast({ title: 'Erreur', description: "Erreur lors du televersement", variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setSavingProfile(true);
+      const updatedProfile = await UsersApi.updateProfile({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
+        phone: profileForm.phone || undefined,
+        avatar: profileForm.avatar || undefined,
+      });
+      setProfile(updatedProfile);
+      setEditingProfile(false);
+      const storedUser = getStoredUser() || {};
+      setStoredUser({ ...storedUser, ...updatedProfile });
+      toast({ title: 'Profil mis a jour avec succes' });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message || 'Erreur lors de la mise a jour', variant: 'destructive' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleCancelProfile = () => {
+    setProfileForm({
+      firstName: profile?.firstName || '',
+      lastName: profile?.lastName || '',
+      phone: profile?.phone || '',
+      avatar: profile?.avatar || '',
+    });
+    setEditingProfile(false);
   };
 
   const handleChangeEmail = async (e: React.FormEvent) => {
@@ -353,32 +397,127 @@ export default function AdminAccountSettingsPage() {
             {/* Onglet Profil */}
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    {profile?.avatar ? (
-                      <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Informations personnelles</h3>
+                  {!editingProfile ? (
+                    <button
+                      onClick={() => setEditingProfile(true)}
+                      className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                    >
+                      <FiEdit3 className="w-4 h-4" />
+                      Modifier
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCancelProfile}
+                        className="flex items-center gap-2 bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                      >
+                        <FiX className="w-4 h-4" />
+                        Annuler
+                      </button>
+                      <button
+                        onClick={handleSaveProfile}
+                        disabled={savingProfile}
+                        className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                      >
+                        <FiSave className="w-4 h-4" />
+                        {savingProfile ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    {editingProfile ? (
+                      <div>
+                        <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                          {profileForm.avatar ? (
+                            <img src={profileForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <FiUser className="w-10 h-10 text-gray-400" />
+                          )}
+                        </div>
+                        <label className="mt-2 inline-flex items-center px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-xs font-medium text-gray-200 hover:bg-gray-600 cursor-pointer">
+                          <FiUpload className="w-3 h-3 mr-1.5" />
+                          {uploading ? 'Televersement...' : 'Changer'}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                            disabled={uploading}
+                          />
+                        </label>
+                      </div>
                     ) : (
-                      <FiUser className="w-10 h-10 text-gray-300" />
+                      <div className="relative">
+                        <UserAvatar src={profile?.avatar} alt="Avatar" size="lg" className="w-20 h-20" />
+                        {profile?.isVerified && (
+                          <span className="absolute -bottom-0.5 -right-0.5">
+                            <VerifiedBadge size="sm" />
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
+
+                  {/* Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                     <div>
-                      <div className="text-sm text-gray-300">Prénom</div>
-                      <div className="text-white font-medium">{profile?.firstName || '—'}</div>
+                      <div className="text-sm text-gray-300 mb-1">Prenom</div>
+                      {editingProfile ? (
+                        <input
+                          type="text"
+                          value={profileForm.firstName}
+                          onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      ) : (
+                        <div className="text-white font-medium">{profile?.firstName || '—'}</div>
+                      )}
                     </div>
                     <div>
-                      <div className="text-sm text-gray-300">Nom</div>
-                      <div className="text-white font-medium">{profile?.lastName || '—'}</div>
+                      <div className="text-sm text-gray-300 mb-1">Nom</div>
+                      {editingProfile ? (
+                        <input
+                          type="text"
+                          value={profileForm.lastName}
+                          onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      ) : (
+                        <div className="text-white font-medium">{profile?.lastName || '—'}</div>
+                      )}
                     </div>
                     <div>
-                      <div className="text-sm text-gray-300">Email</div>
+                      <div className="text-sm text-gray-300 mb-1">Email</div>
                       <div className="text-white font-medium flex items-center">
                         <FiMail className="w-4 h-4 mr-2 text-gray-300" />
                         {profile?.email}
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-300">Rôle</div>
+                      <div className="text-sm text-gray-300 mb-1">Telephone</div>
+                      {editingProfile ? (
+                        <input
+                          type="text"
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Numero de telephone"
+                        />
+                      ) : (
+                        <div className="text-white font-medium flex items-center">
+                          <FiPhone className="w-4 h-4 mr-2 text-gray-300" />
+                          {profile?.phone || '—'}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-300 mb-1">Role</div>
                       <div className="text-white font-medium">Administrateur</div>
                     </div>
                   </div>

@@ -6,6 +6,8 @@ import { formatMoney } from '@/lib/utils';
 import SimplePagination from '@/components/ui/simple-pagination';
 import { useToast } from '@/hooks/use-toast';
 import ResponsiveReCAPTCHA from '@/components/ui/responsive-recaptcha';
+import VerifiedBadge from '@/components/ui/verified-badge';
+import UserAvatar from '@/components/ui/user-avatar';
 import { getStoredToken } from '@/lib/auth-client';
 
 export default function AdminUsersPage() {
@@ -26,15 +28,17 @@ export default function AdminUsersPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const query = new URLSearchParams({
         page: currentPage.toString(),
-        limit: '10'
+        limit: '20'
       });
-      
+      if (roleFilter !== 'all') query.set('role', roleFilter);
+      if (searchTerm.trim()) query.set('search', searchTerm.trim());
+
       const response = await UsersApi.getAll(`?${query}`);
       const usersData = Array.isArray(response?.data) ? response.data : [];
-      
+
       setUsers(usersData);
       setTotalPages(response?.meta?.totalPages || 1);
     } catch (e) {
@@ -46,20 +50,15 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter, searchTerm]);
+
+  useEffect(() => {
     loadUsers();
-  }, [currentPage]);
+  }, [currentPage, roleFilter, searchTerm]);
 
   // Filter users based on search and role
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' || 
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    
-    return matchesSearch && matchesRole;
-  });
+  const filteredUsers = users;
 
   // Calculate stats
   const totalUsers = users.length;
@@ -374,14 +373,11 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <img
-                          className="h-10 w-10 rounded-full"
-                          src={user.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop'}
-                          alt=""
-                        />
+                        <UserAvatar src={user.avatar} alt={`${user.firstName} ${user.lastName}`} size="md" />
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-white">
+                          <div className="text-sm font-medium text-white flex items-center">
                             {user.firstName} {user.lastName}
+                            {user.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
                           </div>
                           <div className="text-sm text-gray-300">{user.email}</div>
                         </div>

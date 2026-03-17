@@ -5,6 +5,7 @@ import SimplePagination from '@/components/ui/simple-pagination';
 import { CampaignsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { getStoredToken, getStoredUser } from '@/lib/auth-client';
+import VerifiedBadge from '@/components/ui/verified-badge';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -369,7 +370,10 @@ export default function AdminCampaignsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">{`${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</div>
+                    <div className="text-sm font-medium text-white flex items-center">
+                      {`${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}
+                      {campaign.creator?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(campaign.status)}`}>

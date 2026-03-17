@@ -11,6 +11,7 @@ export const fakeUsers: User[] = [
     phone: '+261 34 12 345 67',
     createdAt: '2024-01-01',
     isVerified: true,
+    emailVerified: true,
   },
   {
     id: '2',
@@ -22,6 +23,7 @@ export const fakeUsers: User[] = [
     phone: '+261 34 11 222 33',
     createdAt: '2024-01-15',
     isVerified: true,
+    emailVerified: true,
     bankInfo: [{
       id: '1',
       type: 'mobile_money',
@@ -41,6 +43,7 @@ export const fakeUsers: User[] = [
     phone: '+261 33 44 555 66',
     createdAt: '2024-02-01',
     isVerified: false,
+    emailVerified: true,
   },
 ];
 

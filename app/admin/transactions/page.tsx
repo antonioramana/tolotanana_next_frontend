@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { DonationsApi, WithdrawalsApi } from '@/lib/api';
 import { FiDollarSign, FiTrendingUp, FiTrendingDown, FiRefreshCw } from 'react-icons/fi';
 import { formatMoney } from '@/lib/utils';
+import VerifiedBadge from '@/components/ui/verified-badge';
+import UserAvatar from '@/components/ui/user-avatar';
 
 export default function AdminTransactionsPage() {
   const [donations, setDonations] = useState<any[]>([]);
@@ -490,14 +492,11 @@ function TransactionDetailsModal({ transaction, onClose }: { transaction: any; o
             <div>
               <label className="block text-sm font-medium text-gray-700">Donateur</label>
               <div className="mt-1 flex items-center">
-                <img
-                  className="h-8 w-8 rounded-full mr-3"
-                  src={transaction.donor.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop'}
-                  alt=""
-                />
+                <UserAvatar src={transaction.donor.avatar} alt={`${transaction.donor.firstName} ${transaction.donor.lastName}`} size="sm" className="mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-gray-900 flex items-center">
                     {transaction.donor.firstName} {transaction.donor.lastName}
+                    {transaction.donor.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
                   </p>
                   <p className="text-sm text-gray-500">{transaction.donor.email}</p>
                 </div>
@@ -509,14 +508,11 @@ function TransactionDetailsModal({ transaction, onClose }: { transaction: any; o
             <div>
               <label className="block text-sm font-medium text-gray-700">Demandeur</label>
               <div className="mt-1 flex items-center">
-                <img
-                  className="h-8 w-8 rounded-full mr-3"
-                  src={transaction.requester.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop'}
-                  alt=""
-                />
+                <UserAvatar src={transaction.requester.avatar} alt={`${transaction.requester.firstName} ${transaction.requester.lastName}`} size="sm" className="mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-gray-900 flex items-center">
                     {transaction.requester.firstName} {transaction.requester.lastName}
+                    {transaction.requester.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
                   </p>
                   <p className="text-sm text-gray-500">{transaction.requester.email}</p>
                 </div>

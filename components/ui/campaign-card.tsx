@@ -5,6 +5,8 @@ import { formatMoney } from '@/lib/utils';
 import FavoriteToggle from '@/components/campaign/FavoriteToggle';
 import FavoriteButton from '@/components/campaign/FavoriteButton';
 import ShareModal from '@/components/campaign/ShareModal';
+import VerifiedBadge from '@/components/ui/verified-badge';
+import UserAvatar from '@/components/ui/user-avatar';
 import { useFavorites } from '@/hooks/useFavorites';
 import { getStoredUser } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
@@ -143,12 +145,9 @@ export default function CampaignCard({ campaign, viewMode = 'grid' }: CampaignCa
                   {new Date(campaign.deadline).toLocaleDateString('fr-FR')}
                 </span>
                 <span className="flex items-center">
-                  <img
-                    src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
-                    alt={creatorName}
-                    className="w-5 h-5 rounded-full mr-1"
-                  />
+                  <UserAvatar src={campaign.creator?.avatar} alt={creatorName} size="xs" className="mr-1" />
                   {creatorName}
+                  {campaign.creator?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
@@ -267,12 +266,9 @@ export default function CampaignCard({ campaign, viewMode = 'grid' }: CampaignCa
 
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <img
-              src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop"
-              alt={creatorName}
-              className="w-6 h-6 rounded-full mr-2"
-            />
+            <UserAvatar src={campaign.creator?.avatar} alt={creatorName} size="xs" className="mr-2" />
             <span className="text-sm text-gray-600">{creatorName}</span>
+            {campaign.creator?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
           </div>
           <div className="flex items-center space-x-2">
             {currentUser && (

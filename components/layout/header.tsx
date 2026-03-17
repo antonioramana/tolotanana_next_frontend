@@ -6,6 +6,8 @@ import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiHeart } from 'react-icons/
 import { clearStoredUser, getStoredUser } from '@/lib/auth-client';
 import AuthModal from '@/components/layout/auth-modal';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import VerifiedBadge from '@/components/ui/verified-badge';
+import UserAvatar from '@/components/ui/user-avatar';
 
 type AuthTab = 'login' | 'register';
 
@@ -98,12 +100,9 @@ export default function Header({ user: userProp }: { user?: any }) {
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-2 transition-colors"
                   >
-                  <img 
-                    src={user.avatar || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop'}
-                    alt="Profile"
-                    className="w-6 h-6 rounded-full"
-                  />
+                  <UserAvatar src={user.avatar} alt="Profile" size="xs" />
                   <span className="text-sm font-medium">{user.firstName}</span>
+                  {user.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
                 </button>
                 
                 {isProfileOpen && (
@@ -115,15 +114,6 @@ export default function Header({ user: userProp }: { user?: any }) {
                       <FiUser className="w-4 h-4 mr-3" />
                       Dashboard
                     </Link>
-                    {user?.role === 'admin' && (
-                      <Link
-                        href="/admin/profile"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <FiSettings className="w-4 h-4 mr-3" />
-                        Profil admin
-                      </Link>
-                    )}
                     <Link
                       href={`${getDashboardUrl()}/profile`}
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

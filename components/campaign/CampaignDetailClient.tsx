@@ -12,6 +12,8 @@ import FavoriteToggle from '@/components/campaign/FavoriteToggle';
 import FavoriteButton from '@/components/campaign/FavoriteButton';
 import ShareModal from '@/components/campaign/ShareModal';
 import { useFavorites } from '@/hooks/useFavorites';
+import VerifiedBadge from '@/components/ui/verified-badge';
+import UserAvatar from '@/components/ui/user-avatar';
 
 interface CampaignDetailClientProps {
   campaign: any;
@@ -492,7 +494,10 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                                <FiHeart className="w-4 h-4" />
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{donorName}</p>
+                              <p className="font-medium text-gray-900 flex items-center">
+                                {donorName}
+                                {!donation.isAnonymous && donation.donor?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
+                              </p>
                               {donation.message && (
                                 <p className="text-sm text-gray-600">"{donation.message}"</p>
                               )}
@@ -591,23 +596,17 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Organisateur</h3>
               <div className="flex items-center space-x-3 mb-4">
-                <img
-                  src={campaign.creator?.avatar || '/placeholder-avatar.png'}
-                  alt={campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}
-                  className="w-12 h-12 rounded-full"
-                />
+                <UserAvatar src={campaign.creator?.avatar} alt={campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()} size="lg" />
                 <div>
-                  <p className="font-medium text-gray-900">{campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}</p>
+                  <p className="font-medium text-gray-900 flex items-center">
+                    {campaign.createdByName || `${campaign.creator?.firstName || ''} ${campaign.creator?.lastName || ''}`.trim()}
+                    {campaign.creator?.isVerified && <VerifiedBadge size="sm" className="ml-1.5" />}
+                  </p>
                   <p className="text-sm text-gray-600">Organisateur</p>
                 </div>
               </div>
-              {campaign.isVerified && (
-                <div className="flex items-center text-sm text-green-600">
-                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center mr-2">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span>Profil vérifié</span>
-                </div>
+              {campaign.creator?.isVerified && (
+                <VerifiedBadge size="md" showLabel className="mt-1" />
               )}
             </div>
 
@@ -652,13 +651,15 @@ export default function CampaignDetailClient({ campaign, onRefetch }: CampaignDe
                       const amount = typeof donation.amount === 'string' ? parseFloat(donation.amount) : donation.amount || 0;
                       const isAnon = donation.isAnonymous;
                       const donorName = isAnon ? 'Donateur Anonyme' : (donation.donorName || `${donation.donor?.firstName || ''} ${donation.donor?.lastName || ''}`.trim() || 'Donateur');
-                      const avatar = donation.donor?.avatar || '/placeholder-avatar.png';
                       return (
                         <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3 min-w-0">
-                            <img src={avatar} alt={donorName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                            <UserAvatar src={donation.donor?.avatar} alt={donorName} size="md" />
                             <div className="min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{donorName}</p>
+                              <p className="font-medium text-gray-900 truncate flex items-center">
+                                {donorName}
+                                {!isAnon && donation.donor?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
+                              </p>
                               <p className="text-xs text-gray-500">
                                 {new Date(donation.createdAt).toLocaleString('fr-FR', {
                                   year: 'numeric',

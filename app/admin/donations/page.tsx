@@ -4,6 +4,7 @@ import { FiEye, FiSearch, FiFilter, FiDollarSign, FiUser, FiCalendar, FiLoader, 
 import { DonationsApi, CatalogApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { getStoredToken } from '@/lib/auth-client';
+import VerifiedBadge from '@/components/ui/verified-badge';
 
 export default function AdminDonationsPage() {
   const [donations, setDonations] = useState<any[]>([]);
@@ -348,7 +349,10 @@ export default function AdminDonationsPage() {
                           <FiUser className="w-4 h-4 text-gray-200" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-white">{donorName}</div>
+                          <div className="text-sm font-medium text-white flex items-center">
+                            {donorName}
+                            {donation.donor?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
+                          </div>
                           {donation.isAnonymous && (
                             <div className="text-xs text-gray-300">Anonyme</div>
                           )}
@@ -435,7 +439,10 @@ export default function AdminDonationsPage() {
                     <FiUser className="w-5 h-5 text-gray-200" />
                   </div>
                   <div>
-                    <div className="font-medium text-white">{donorName}</div>
+                    <div className="font-medium text-white flex items-center">
+                      {donorName}
+                      {donation.donor?.isVerified && <VerifiedBadge size="xs" className="ml-1" />}
+                    </div>
                     {donation.isAnonymous && (
                       <div className="text-xs text-gray-300">Anonyme</div>
                     )}
