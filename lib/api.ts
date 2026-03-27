@@ -1,42 +1,38 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
-
-function parseJwt(token: string): any | null {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-}
+const API_BASE =
+  typeof window === 'undefined'
+    ? process.env.SERVER_API_BASE || 'http://localhost:4000'
+    : process.env.NEXT_PUBLIC_API_BASE || '/api';
 
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
+
+  // Import dynamique côté client uniquement
+  const { getStoredToken, clearStoredUser } = require('./auth-client');
+  const token = getStoredToken();
+  if (!token) return null;
+
+  // Check expiry
   try {
-    const raw = localStorage.getItem('auth_user');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const token: string | undefined = parsed?.token;
-    if (!token) return null;
-    const payload = parseJwt(token);
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(
+      decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+    );
     if (payload && typeof payload.exp === 'number') {
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      if (payload.exp <= nowSeconds) {
-        // Token expired: clear stored user
-        try { localStorage.removeItem('auth_user'); } catch {}
+      if (payload.exp <= Math.floor(Date.now() / 1000)) {
+        clearStoredUser();
         return null;
       }
     }
-    return token;
   } catch {
     return null;
   }
+  return token;
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -55,9 +51,10 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
-      try { localStorage.removeItem('auth_user'); } catch {}
       // Redirect to appropriate login page depending on current path
       if (typeof window !== 'undefined') {
+        const { clearStoredUser } = require('./auth-client');
+        clearStoredUser();
         const isAdminArea = window.location.pathname.startsWith('/admin');
         const isAdminLoginArea = window.location.pathname.startsWith('/admin-login');
         const target = isAdminArea || isAdminLoginArea ? '/admin-login' : '/login';
@@ -72,7 +69,9 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 204) return undefined as unknown as T;
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 async function apiPublic<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -90,7 +89,9 @@ async function apiPublic<T>(path: string, options: RequestInit = {}): Promise<T>
     throw new Error(text || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as unknown as T;
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  return JSON.parse(text) as T;
 }
 
 function unwrapList<T>(res: any): T[] {
@@ -111,7 +112,17 @@ export const AuthApi = {
       body: JSON.stringify(data),
     }),
   register: (data: { firstName: string; lastName: string; email: string; password: string; role?: 'demandeur'|'donateur'|'admin'; phone?: string; token?: string }) =>
-    api<{ user: any; token: string }>('/auth/register', {
+    apiPublic<{ message: string; requiresVerification: boolean; email: string; verificationCode?: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  verifyRegistration: (data: { email: string; verificationCode: string }) =>
+    apiPublic<{ user: any; token: string }>('/auth/verify-registration', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  resendRegistrationCode: (data: { email: string }) =>
+    apiPublic<{ message: string; verificationCode?: string }>('/auth/resend-registration-code', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -263,7 +274,23 @@ export const UploadApi = {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     const path = data.url || data.location || '';
-    return path.startsWith('http') ? path : `${API_BASE}${path}`;
+
+    // Cas URL absolue (dev/local ou prod avec domaine complet)
+    if (API_BASE.startsWith('http')) {
+      let finalUrl = path.startsWith('http') ? path : `${API_BASE}${path}`;
+      // Corriger les URLs du type ".../api/uploads/..." -> ".../uploads/..."
+      if (finalUrl.includes('/api/uploads/')) {
+        finalUrl = finalUrl.replace('/api/uploads/', '/uploads/');
+      }
+      return finalUrl;
+    }
+
+    // Cas API_BASE relatif (ex: "/api") : les fichiers sont servis sur "/uploads"
+    if (typeof path === 'string' && path.startsWith('/uploads')) {
+      return path;
+    }
+
+    return `${API_BASE}${path}`;
   },
 };
 
@@ -371,6 +398,49 @@ export const PublicTestimonialsApi = {
 // Dashboard API (Admin)
 export const DashboardApi = {
   getStats: () => api<any>('/dashboard/stats'),
+};
+
+// Maintenance API
+export const MaintenanceApi = {
+  getStatus: () => apiPublic<{ isActive: boolean; message: string; activatedAt: string | null }>('/maintenance/status'),
+  toggle: (isActive: boolean, message?: string) => api<any>('/maintenance/toggle', { method: 'PATCH', body: JSON.stringify({ isActive, message }) }),
+  updateMessage: (message: string) => api<any>('/maintenance/message', { method: 'PATCH', body: JSON.stringify({ message }) }),
+};
+
+// === KYC API ===
+export const KycApi = {
+  // User endpoints
+  submit: async (formData: FormData) => {
+    const token = getAuthToken();
+    const res = await fetch(`${API_BASE}/kyc/submit`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData, // multipart/form-data
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  getStatus: () => api<any>('/kyc/status'),
+
+  // Admin endpoints
+  list: (params?: { status?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    return api<any>(`/admin/kyc?${query.toString()}`);
+  },
+  getById: (id: string) => api<any>(`/admin/kyc/${id}`),
+  review: (id: string, data: { action: 'approved' | 'rejected'; rejectionReason?: string }) =>
+    api<any>(`/admin/kyc/${id}/review`, { method: 'PATCH', body: JSON.stringify(data) }),
+  stats: () => api<any>('/admin/kyc/stats'),
+  getDocumentUrl: (filename: string) => `${API_BASE}/admin/kyc/document/${filename}`,
 };
 
 export { api, apiPublic, getAuthToken, API_BASE };
