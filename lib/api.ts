@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4750';
+const API_BASE =
+  typeof window === 'undefined'
+    ? process.env.SERVER_API_BASE || 'http://localhost:4000'
+    : process.env.NEXT_PUBLIC_API_BASE || '/api';
 
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
